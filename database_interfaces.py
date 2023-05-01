@@ -483,6 +483,40 @@ def register():
 
 
 def restock():
+    RESTOCK_AMOUNT = 10
+    # Find all Pending Restocks
+    query = "SELECT * FROM Restock WHERE Restock_Status = 'Placed';"
+    cursor.execute(query)
+    allRestocks = cursor.fetchall()
+    now = datetime.datetime.now()
+    print("Restocks arrived since last check: ")
+    for restock in allRestocks:
+        restockHour = restock[2]
+        restockMinute = restock[3]
+        time_obj = datetime.time(restockHour, restockMinute)
+        date_obj = datetime.datetime.combine(restock[1], time_obj)
+        if (now > date_obj):
+            print("ID: " + str(restock[0]) + " Store: " +
+                  str(restock[5]) + " Warehouse: " + str(restock[6]))
+    if (len(allRestocks) != 0):
+        print("Updating store inventories...")
+        for restock in allRestocks:
+            query = "SELECT * FROM Restock_Item WHERE Stocking_ID = " + \
+                str(restock[0]) + "; "
+            cursor.execute(query)
+            restockItems = cursor.fetchall()
+            for item in restockItems:
+                query = "UPDATE Inventory SET Amount = Amount +" + \
+                    str(item[0]) + " WHERE store_id = " + \
+                    str(restock[5]) + " AND UPC_Code = " + \
+                    str(item[2]) + ";"
+                cursor.execute(query)
+            query = "UPDATE Restock SET Restock_Status = 'Completed' WHERE Stocking_ID = " + \
+                str(restock[0]) + "; "
+            cursor.execute(query)
+        print("Updated\n")
+    cnx.commit()
+
     # Final all stores and products that need to be restocked
     # Query to find which products are low
     query = """SELECT i.Store_ID, i.UPC_Code, i.Amount, s.Region
@@ -498,26 +532,45 @@ def restock():
         print("Store ID: " + str(restock[0]) + " product UPC: " +
               str(restock[1]) + " quantity: " + str(restock[2]))
     input("Press Enter to restock")
-
+    # Subtract products from warehouse_inventories
+    for product in restockProducts:
+        query = "UPDATE Warehouse_Inventory AS wi JOIN Warehouse AS w ON wi.Warehouse_ID = w.Warehouse_ID SET wi.Amount = wi.Amount - " + \
+            str(RESTOCK_AMOUNT) + " WHERE w.Region = \'" + getRegion(product[3]) + \
+            "\' AND wi.UPC_Code = " + str(product[1]) + ";"
+        # Not actaully get subtracted from warehouse TODO
+        cursor.execute(query)
     # Add Restock records
     currentStoreId = -1
     currentRestockID = -1
     for product in restockProducts:
         if (product[0] == currentStoreId):  # Add to exisitng restock
-            addRestockItem(product[1], product[2],
+            addRestockItem(product[1], RESTOCK_AMOUNT,
                            currentRestockID)
         else:
             # New Restock
             currentStoreId = product[0]
-            currentSaleID = addRestock(product[0], product[3])
-            if (currentSaleID != -1):
-                addRestockItem(product[1], product[2],
+            currentRestockID = addRestock(product[0], product[3])
+            if (currentRestockID != -1):
+                addRestockItem(product[1], RESTOCK_AMOUNT,
                                currentRestockID)
             else:
                 print("Error in making restock, please try again")
                 cnx.rollback()
                 break
-    printRestocks()
+    # printRestocks() #Uncomment to display all Restock and Restock Items
+    print("Restocking Complete")
+    cnx.commit()
+
+
+def getRegion(i):
+    if (i == 1):
+        return "North"
+    if (i == 2):
+        return "South"
+    if (i == 3):
+        return "East"
+    if (i == 4):
+        return ""
 
 
 def addRestock(store, warehouse):  # Helper to add a restock to the database
@@ -549,7 +602,7 @@ def addRestockItem(product_UPC, amount, STOCKING_ID):
         query = "SELECT IFNULL(MAX(STOCKING_ID), 0) + 1 FROM Restock;"
         cursor.execute(query)
         sale_id = int(cursor.fetchone()[0])
-        query = "INSERT INTO Restock_Item (STOCKING_ID, UPC_Code, Quanity) VALUES (" + \
+        query = "INSERT INTO Restock_Item (STOCKING_ID, UPC_Code, Quantity) VALUES (" + \
             str(STOCKING_ID) + "," + str(product_UPC) + "," + \
             str(amount) + "); "
         cursor.execute(query)
