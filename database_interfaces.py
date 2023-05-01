@@ -484,39 +484,6 @@ def register():
 
 def restock():
     RESTOCK_AMOUNT = 10
-    # Find all Pending Restocks
-    query = "SELECT * FROM Restock WHERE Restock_Status = 'Placed';"
-    cursor.execute(query)
-    allRestocks = cursor.fetchall()
-    now = datetime.datetime.now()
-    print("Restocks arrived since last check: ")
-    for restock in allRestocks:
-        restockHour = restock[2]
-        restockMinute = restock[3]
-        time_obj = datetime.time(restockHour, restockMinute)
-        date_obj = datetime.datetime.combine(restock[1], time_obj)
-        if (now > date_obj):
-            print("ID: " + str(restock[0]) + " Store: " +
-                  str(restock[5]) + " Warehouse: " + str(restock[6]))
-    if (len(allRestocks) != 0):
-        print("Updating store inventories...")
-        for restock in allRestocks:
-            query = "SELECT * FROM Restock_Item WHERE Stocking_ID = " + \
-                str(restock[0]) + "; "
-            cursor.execute(query)
-            restockItems = cursor.fetchall()
-            for item in restockItems:
-                query = "UPDATE Inventory SET Amount = Amount +" + \
-                    str(item[0]) + " WHERE store_id = " + \
-                    str(restock[5]) + " AND UPC_Code = " + \
-                    str(item[2]) + ";"
-                cursor.execute(query)
-            query = "UPDATE Restock SET Restock_Status = 'Completed' WHERE Stocking_ID = " + \
-                str(restock[0]) + "; "
-            cursor.execute(query)
-        print("Updated\n")
-    cnx.commit()
-
     # Final all stores and products that need to be restocked
     # Query to find which products are low
     query = """SELECT i.Store_ID, i.UPC_Code, i.Amount, s.Region
@@ -648,7 +615,39 @@ def updateInventory():
     # input: store id ( run to check if shipments needs handling at the store )
     # return any requests
     # input: order fullfillment with shipment date
-    input()
+    # Find all Pending Restocks
+    query = "SELECT * FROM Restock WHERE Restock_Status = 'Placed';"
+    cursor.execute(query)
+    allRestocks = cursor.fetchall()
+    now = datetime.datetime.now()
+    print("Restocks arrived since last check: ")
+    for restock in allRestocks:
+        restockHour = restock[2]
+        restockMinute = restock[3]
+        time_obj = datetime.time(restockHour, restockMinute)
+        date_obj = datetime.datetime.combine(restock[1], time_obj)
+        if (now > date_obj):
+            print("ID: " + str(restock[0]) + " Store: " +
+                  str(restock[5]) + " Warehouse: " + str(restock[6]))
+    if (len(allRestocks) != 0):
+        print("Updating store inventories...")
+        for restock in allRestocks:
+            query = "SELECT * FROM Restock_Item WHERE Stocking_ID = " + \
+                str(restock[0]) + "; "
+            cursor.execute(query)
+            restockItems = cursor.fetchall()
+            for item in restockItems:
+                query = "UPDATE Inventory SET Amount = Amount +" + \
+                    str(item[0]) + " WHERE store_id = " + \
+                    str(restock[5]) + " AND UPC_Code = " + \
+                    str(item[2]) + ";"
+                cursor.execute(query)
+            query = "UPDATE Restock SET Restock_Status = 'Completed' WHERE Stocking_ID = " + \
+                str(restock[0]) + "; "
+            cursor.execute(query)
+        print("Updated\n")
+    cnx.commit()
+
 
 # checkout - update inventory and customer frequent buys
 
