@@ -1,6 +1,7 @@
 # database interfaces
 import os
 import mysql.connector
+import datetime
 
 cnx = mysql.connector.connect(user='com303ccarter2', password='cc3456cc',
                               host='136.244.224.221',
@@ -15,9 +16,10 @@ def runMainMenu():
             1. OLAP\n
             2. Web Order\n
             3. Reorder\n
-            4. Vendor Shipment\n
-            5. Update Inventory\n
-            6. Checkout\n""")
+            4. Restock Store\n
+            5. Vendor Shipment\n
+            6. Update Inventory\n
+            7. Checkout\n""")
     try:
         selection = int(rselection)
     except:
@@ -33,10 +35,12 @@ def runMainMenu():
         case 3:
             reorder()
         case 4:
-            vendorShipment()
+            restock()
         case 5:
-            updateInventory()
+            vendorShipment()
         case 6:
+            updateInventory()
+        case 7:
             checkout()
         case _:
             input("Invalid input\n press enter to retry")
@@ -331,7 +335,24 @@ def multiPurchase(login, avalibleProducts):
         print("Error: ", error)
         cnx.rollback()  # Roll back
     printPurchases(allAllPurchases)
+    printSales()
     cnx.commit()
+
+
+def printSales():
+    # Print all sales
+    query = "SELECT * FROM Sale;"
+    cursor.execute(query)
+    allSales = cursor.fetchall()
+    print("Sales:")
+    for sale in allSales:
+        print(sale)
+    query = "SELECT * FROM Sale_Item;"
+    cursor.execute(query)
+    print("Sale items:")
+    allSaleItems = cursor.fetchall()
+    for saleItem in allSaleItems:
+        print(saleItem)
 
 
 def printPurchases(allPurchases):
@@ -458,15 +479,112 @@ def register():
     cnx.commit()
     return customer_id
 
+# restock between store and warehouse
 
-# reorder
+
+def restock():
+    # Final all stores and products that need to be restocked
+    # Query to find which products are low
+    query = """SELECT i.Store_ID, i.UPC_Code, i.Amount, s.Region
+                FROM Inventory AS i
+                JOIN Store AS s ON i.Store_ID = s.Store_ID
+                WHERE i.Amount <= 5;"""
+    cursor.execute(query)
+    restockProducts = cursor.fetchall()
+    restockProducts = sorted(
+        restockProducts, key=lambda x: x[0])  # sort purchases
+    print("Items needing Restocking: ")
+    for restock in restockProducts:
+        print("Store ID: " + str(restock[0]) + " product UPC: " +
+              str(restock[1]) + " quantity: " + str(restock[2]))
+    input("Press Enter to restock")
+
+    # Add Restock records
+    currentStoreId = -1
+    currentRestockID = -1
+    for product in restockProducts:
+        if (product[0] == currentStoreId):  # Add to exisitng restock
+            addRestockItem(product[1], product[2],
+                           currentRestockID)
+        else:
+            # New Restock
+            currentStoreId = product[0]
+            currentSaleID = addRestock(product[0], product[3])
+            if (currentSaleID != -1):
+                addRestockItem(product[1], product[2],
+                               currentRestockID)
+            else:
+                print("Error in making restock, please try again")
+                cnx.rollback()
+                break
+    printRestocks()
+
+
+def addRestock(store, warehouse):  # Helper to add a restock to the database
+    cursor.execute("START TRANSACTION")
+    try:
+        now = datetime.datetime.now()
+        current_hour = now.hour
+        current_minute = now.minute
+        query = "SELECT IFNULL(MAX(Stocking_ID), 0) + 1 FROM Restock;"
+        cursor.execute(query)
+        Stocking_ID = int(cursor.fetchone()[0])
+        query = "INSERT INTO Restock (Stocking_ID, Store_ID, Warehouse_ID, Date, Time_Hour, Time_Minute, Restock_Status) VALUES (" +\
+            str(Stocking_ID)+"," + str(store) + \
+            "," + str(warehouse) + ", NOW() ," + str(current_hour) + "," +\
+            str(current_minute) + ", \'Placed\'" + "); "
+        cursor.execute(query)
+        return Stocking_ID
+    except mysql.connector.Error as error:
+        print("Error caught on query, rolling back database")
+        print("Error: ", error)
+        cnx.rollback()  # Roll back
+        return -1
+
+
+# Helper to addRestockItem to Database
+def addRestockItem(product_UPC, amount, STOCKING_ID):
+    cursor.execute("START TRANSACTION")
+    try:
+        query = "SELECT IFNULL(MAX(STOCKING_ID), 0) + 1 FROM Restock;"
+        cursor.execute(query)
+        sale_id = int(cursor.fetchone()[0])
+        query = "INSERT INTO Restock_Item (STOCKING_ID, UPC_Code, Quanity) VALUES (" + \
+            str(STOCKING_ID) + "," + str(product_UPC) + "," + \
+            str(amount) + "); "
+        cursor.execute(query)
+        return True
+    except mysql.connector.Error as error:
+        print("Error caught on query, rolling back database")
+        print("Error: ", error)
+        cnx.rollback()  # Roll back
+        return False
+
+
+def printRestocks():
+    # Print all sales
+    query = "SELECT * FROM Restock;"
+    cursor.execute(query)
+    allSales = cursor.fetchall()
+    print("Restocks:")
+    for sale in allSales:
+        print(sale)
+    query = "SELECT * FROM Restock_Item;"
+    cursor.execute(query)
+    print("Restock items:")
+    allSaleItems = cursor.fetchall()
+    for saleItem in allSaleItems:
+        print(saleItem)
+
+# reorder between warehouse and vendor
+
+
 def reorder():
     # input: store id (run to check for low stock and put in a reorder to nescessary vendor(s))
     input()
 
+
 # vendor reorder shipment
-
-
 def vendorShipment():
     # input: vendor_id (run to check for request to the vendor )
     input()
