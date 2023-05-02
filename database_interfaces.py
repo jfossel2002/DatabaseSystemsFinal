@@ -19,7 +19,8 @@ def runMainMenu():
             4. Restock Store\n
             5. Vendor Shipment\n
             6. Update Inventory\n
-            7. Checkout\n""")
+            7. Update Warehouse Inventory\n
+            8. Checkout\n""")
     try:
         selection = int(rselection)
     except:
@@ -37,17 +38,17 @@ def runMainMenu():
         case 4:
             restock()
         case 5:
-            vendorShipment()
+            shipment()
         case 6:
             updateInventory()
         case 7:
+            updateWarehouseInventory()
+        case 8:
             checkout()
         case _:
             input("Invalid input\n press enter to retry")
             runMainMenu()
 # OLAP
-
-
 def OLAP():
     # os.system('cls')
     rselection = input("""Select overview:
@@ -480,8 +481,6 @@ def register():
     return customer_id
 
 # restock between store and warehouse
-
-
 def restock():
     RESTOCK_AMOUNT = 10
     # Final all stores and products that need to be restocked
@@ -537,7 +536,7 @@ def getRegion(i):
     if (i == 3):
         return "East"
     if (i == 4):
-        return ""
+        return "West"
 
 
 def addRestock(store, warehouse):  # Helper to add a restock to the database
@@ -597,18 +596,145 @@ def printRestocks():
         print(saleItem)
 
 # reorder between warehouse and vendor
-
-
+#create reorder req.  
 def reorder():
-    # input: store id (run to check for low stock and put in a reorder to nescessary vendor(s))
-    input()
+    query ="SELECT DISTINCT Warehouse_ID FROM Warehouse"#get all warehouse ids 
+    cursor.execute(query)
+    warehouses = cursor.fetchall()
+
+    for warehouse in warehouses: #find the products that need reordering for each warehouse
+
+        # input: store id (run to check for low stock and put in a reorder to nescessary vendor(s))
+        query = """
+                SELECT wi.UPC_Code, sb.Vendor_ID, wi.Amount
+                FROM Warehouse_Inventory AS wi
+                JOIN Supplied_By AS sb ON wi.UPC_Code = sb.UPC_Code
+                JOIN Warehouse AS w ON wi.Warehouse_ID = w.Warehouse_ID
+                WHERE wi.Warehouse_ID =""" + str(warehouse[0]) + " AND wi.Amount < 100;"
+        
+        cursor.execute(query)
+        reorderProducts = cursor.fetchall()
+        reorderProducts = sorted(
+            reorderProducts, key=lambda x: x[1])  # sort products by vendor 
+        if len(reorderProducts) == 0:
+            print("Warehouse " + str(warehouse[0]) +" is fully stocked.")
+        else: 
+            print("Items needing Reordering: ")
+            for product in reorderProducts:
+                print("Warehouse ID: " + str(warehouse[0]) + " product UPC: " +
+                    str(product[0]) + " quantity: " + str(product[2]) + " Vendor ID: " + str(product[1]))
+            input("Press Enter to reorder")
+            
+
+        currVendor = -1
+        reorder_id = -2
+        for product in reorderProducts:
+            vendorId = product[1]
+
+            if vendorId != currVendor:
+                #create new reorder, add curr product
+                reorder_id = addReorder(warehouse[0],vendorId)
+                currVendor = vendorId
+                addReorderItem(product[0],50,reorder_id)
+                cnx.commit()
+            else: 
+                #add to curr reorder 
+                addReorderItem(product[0],50,reorder_id)
+                cnx.commit()
+
+            
+       
+def addReorder(warehouse_id,vendor_id):
+    cursor.execute("START TRANSACTION")
+    try:
+        query = "SELECT IFNULL(MAX(Reorder_ID), 0) + 1 FROM Reorder;"
+        cursor.execute(query)
+        Reorder_ID = int(cursor.fetchone()[0])
+        query = "INSERT INTO Reorder (Reorder_ID, Warehouse_ID, Vendor_ID, Reorder_Status) VALUES (" +\
+            str(Reorder_ID)+"," + str(warehouse_id) + "," + str(vendor_id) +",'ORDERED'); "
+        cursor.execute(query)
+        return Reorder_ID
+    except mysql.connector.Error as error:
+        print("Error caught on query, rolling back database")
+        print("Error: ", error)
+        cnx.rollback()  # Roll back
+        return -1
+
+def addReorderItem(product_UPC, amount, reorder_id): 
+    cursor.execute("START TRANSACTION")
+    try:
+        query = "INSERT INTO Reorder_Item (Reorder_ID, UPC_Code, Amount) VALUES (" + \
+            str(reorder_id) + "," + str(product_UPC) + "," + \
+            str(amount)+ "); "
+        cursor.execute(query)
+        #return True
+    except mysql.connector.Error as error:
+        print("Error caught on query, rolling back database")
+        print("Error: ", error)
+        cnx.rollback()  # Roll back
+        #return False
 
 
-# vendor reorder shipment
-def vendorShipment():
-    # input: vendor_id (run to check for request to the vendor )
-    input()
-# update inventory from shipment
+def shipment():
+    query ="SELECT DISTINCT Vendor_ID FROM Vendor"#get all vendors 
+    cursor.execute(query)
+    vendors = cursor.fetchall()
+
+    for vendor in vendors: #find the products that need reordering for each warehouse
+        query = "SELECT * FROM Reorder WHERE Vendor_ID ="+ str(vendor[0])+ " AND Reorder_Status = 'ORDERED';"
+        cursor.execute(query)
+        reorders = cursor.fetchall()
+        for order in reorders: 
+            
+            query = "SELECT * FROM Reorder_Item WHERE Reorder_ID ="+ str(order[0])+";"
+            cursor.execute(query)
+            products = cursor.fetchall()
+
+            shipment_id = addShipment(order[2],vendor[0])
+            query = "UPDATE Reorder SET Reorder_Status = 'Completed' WHERE Reorder_ID = " + \
+                str(order[0]) + "; "
+            cursor.execute(query)
+            for product in products: 
+                addShipmentItem(product[1],50,shipment_id)
+                print("Vendor "+str(vendor[0])+ " shipped order " + str(order[0]) + " to warehouse " + str(order[2]))
+                cnx.commit()
+            
+
+def addShipment(warehouse,vendor):
+    cursor.execute("START TRANSACTION")
+    try:
+        now = datetime.datetime.now()
+        current_hour = now.hour
+        current_minute = now.minute
+        query = "SELECT IFNULL(MAX(Shipment_ID), 0) + 1 FROM Shipment;"
+        cursor.execute(query)
+        Shipment_ID = int(cursor.fetchone()[0])
+        query = "INSERT INTO Shipment (Shipment_ID, Vendor_ID, Warehouse_ID, Shipment_Date, Time_Hour, Time_Minute, Shipment_Status) VALUES (" +\
+            str(Shipment_ID)+"," + str(vendor) + \
+            "," + str(warehouse) + ", NOW() ," + str(current_hour) + "," +\
+            str(current_minute) + ", \'1\'" + "); "
+        cursor.execute(query)
+        return Shipment_ID
+    except mysql.connector.Error as error:
+        print("Error caught on query, rolling back database")
+        print("Error: ", error)
+        cnx.rollback()  # Roll back
+        return -1
+
+def addShipmentItem(product_UPC, amount, Shipment_ID):
+    cursor.execute("START TRANSACTION")
+    try:
+        query = "INSERT INTO Shipment_Item (Shipment_ID, UPC_Code, Quantity) VALUES (" + \
+            str(Shipment_ID) + "," + str(product_UPC) + "," + \
+            str(amount) + "); "
+        
+        cursor.execute(query)
+        return True
+    except mysql.connector.Error as error:
+        print("Error caught on query, rolling back database")
+        print("Error: ", error)
+        cnx.rollback()  # Roll back
+        return False
 
 
 def updateInventory():
@@ -644,6 +770,39 @@ def updateInventory():
                 cursor.execute(query)
             query = "UPDATE Restock SET Restock_Status = 'Completed' WHERE Stocking_ID = " + \
                 str(restock[0]) + "; "
+            cursor.execute(query)
+        print("Updated\n")
+    cnx.commit()
+
+def updateWarehouseInventory():
+    query = "SELECT * FROM Shipment WHERE Shipment_Status = 1;"
+    cursor.execute(query)
+    allShipments = cursor.fetchall()
+    now = datetime.datetime.now()
+    print("Shipments arrived since last check: ")
+    for shipment in allShipments:
+        shipmentHour = shipment[2]
+        shipmentMinute = shipment[3]
+        time_obj = datetime.time(shipmentHour, shipmentMinute)
+        date_obj = datetime.datetime.combine(shipment[1], time_obj)
+        if (now > date_obj):
+            print("ID: " + str(shipment[0]) + " Warehouse: " +
+                  str(shipment[6]) + " Vendor: " + str(shipment[5]))
+    if (len(allShipments) != 0):
+        print("Updating warehouse inventories...")
+        for shipment in allShipments:
+            query = "SELECT * FROM Shipment_Item WHERE Shipment_ID = " + \
+                str(shipment[0]) + "; "
+            cursor.execute(query)
+            shipmentItems = cursor.fetchall()
+            for item in shipmentItems:
+                query = "UPDATE Warehouse_Inventory SET Amount = Amount +" + \
+                    str(item[0]) + " WHERE warehouse_id = " + \
+                    str(shipment[6]) + " AND UPC_Code = " + \
+                    str(item[1]) + ";"
+                cursor.execute(query)
+            query = "UPDATE Shipment SET Shipment_Status = 0 WHERE Shipment_ID = " + \
+                str(shipment[0]) + "; "
             cursor.execute(query)
         print("Updated\n")
     cnx.commit()
