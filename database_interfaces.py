@@ -209,7 +209,7 @@ def webOrder():
     os.system('cls')
 
     login = input("input ur id to login or -1 to register: \n")
-    # check in customer exists in database
+    # check if customer exists in database
     query = "SELECT * FROM Customer WHERE Customer_ID = " + login
     try:
         cursor.execute(query)
@@ -761,33 +761,51 @@ def addReorderItem(product_UPC, amount, reorder_id):
 
 def shipment():
     os.system('cls')
-    query = "SELECT DISTINCT Vendor_ID FROM Vendor"  # get all vendors
-    cursor.execute(query)
-    vendors = cursor.fetchall()
-
-    for vendor in vendors:  # find the products that need reordering for each warehouse
-        query = "SELECT * FROM Reorder WHERE Vendor_ID =" + \
-            str(vendor[0]) + " AND Reorder_Status = 'ORDERED';"
+    vendor_id = input("Input Vendor ID: ") 
+    query = "SELECT * FROM Vendor WHERE Vendor_ID =" + vendor_id + ";"
+    try:
         cursor.execute(query)
-        reorders = cursor.fetchall()
-        for order in reorders:
-
-            query = "SELECT * FROM Reorder_Item WHERE Reorder_ID =" + \
-                str(order[0])+";"
+    except mysql.connector.Error as error:
+        input(error + "\npress enter to continue\n")
+    
+   
+    while not cursor.fetchone():
+        os.system('cls')
+        vendor_id = input("Input Valid Vendor ID: ") 
+        query = "SELECT * FROM Vendor WHERE Vendor_ID =" + vendor_id + ";"
+        try:
             cursor.execute(query)
-            products = cursor.fetchall()
+        except mysql.connector.Error as error:
+            print(error)
+            input( "\npress enter to continue\n")
+    os.system('cls')
 
-            shipment_id = addShipment(order[2], vendor[0])
-            query = "UPDATE Reorder SET Reorder_Status = 'Completed' WHERE Reorder_ID = " + \
-                str(order[0]) + "; "
-            cursor.execute(query)
-            for product in products:
-                addShipmentItem(product[1], 50, shipment_id)
-                print("Vendor "+str(vendor[0]) + " shipped order " +
-                      str(order[0]) + " to warehouse " + str(order[2]))
-                cnx.commit()
+    # query = "SELECT DISTINCT Vendor_ID FROM Vendor WHERE Vendor_ID = " + vendor_id + ";" 
+    # cursor.execute(query)
+    # vendors = cursor.fetchall()
+    
+    query = "SELECT * FROM Reorder WHERE Vendor_ID =" + \
+        vendor_id + " AND Reorder_Status = 'ORDERED';"
+    cursor.execute(query)
+    reorders = cursor.fetchall()
+    print("Vendor "+str(vendor_id) + " shipments: ")
+    for order in reorders:
 
+        query = "SELECT * FROM Reorder_Item WHERE Reorder_ID =" + \
+            str(order[0])+";"
+        cursor.execute(query)
+        products = cursor.fetchall()
 
+        shipment_id = addShipment(order[2], vendor_id)
+        query = "UPDATE Reorder SET Reorder_Status = 'Completed' WHERE Reorder_ID = " + \
+            str(order[0]) + "; "
+        cursor.execute(query)
+        for product in products:
+            addShipmentItem(product[1], 50, shipment_id)
+            print("Order " + str(order[0]) + " to warehouse " + str(order[2]))
+            cnx.commit()
+
+    input("")
 def addShipment(warehouse, vendor):
     cursor.execute("START TRANSACTION")
     try:
@@ -827,9 +845,26 @@ def addShipmentItem(product_UPC, amount, Shipment_ID):
 
 
 def updateInventory():
-    # Find all Pending Restocks
+    # Find all Pending Restock
     os.system('cls')
-    query = "SELECT * FROM Restock WHERE Restock_Status = 'Placed';"
+    store_id = input("Input Store ID: ") 
+    query = "SELECT * FROM Store WHERE Store_ID =" + store_id + ";"
+    try:
+        cursor.execute(query)
+    except mysql.connector.Error as error:
+        input(error + "\npress enter to continue\n")
+    
+   
+    while not cursor.fetchone():
+        os.system('cls')
+        store_id = input("Input Valid Store ID: ") 
+        query = "SELECT * FROM Store WHERE Store_ID =" + store_id + ";"
+        try:
+            cursor.execute(query)
+        except mysql.connector.Error as error:
+            input(error + "\npress enter to continue\n")
+        
+    query = "SELECT * FROM Restock WHERE Restock_Status = 'Placed' AND Store_ID =" + store_id + ";"
     cursor.execute(query)
     allRestocks = cursor.fetchall()
     now = datetime.datetime.now()
@@ -860,11 +895,30 @@ def updateInventory():
             cursor.execute(query)
         print("Updated\n")
     cnx.commit()
+    input("")
+    os.system('cls')
 
 
 def updateWarehouseInventory():
     os.system('cls')
-    query = "SELECT * FROM Shipment WHERE Shipment_Status = 1;"
+    warehouse_id = input("Input Warehouse ID: ") 
+    query = "SELECT * FROM Warehouse WHERE Warehouse_ID =" + warehouse_id + ";"
+    try:
+        cursor.execute(query)
+    except mysql.connector.Error as error:
+        input(error + "\npress enter to continue\n")
+    
+   
+    while not cursor.fetchone():
+        os.system('cls')
+        warehouse_id = input("Input Valid Warehouse ID: ") 
+        query = "SELECT * FROM Warehouse WHERE Warehouse_ID =" + warehouse_id + ";"
+        try:
+            cursor.execute(query)
+        except mysql.connector.Error as error:
+            input(error + "\npress enter to continue\n")
+    os.system('cls')
+    query = "SELECT * FROM Shipment WHERE Shipment_Status = 1 and Warehouse_ID = " + warehouse_id +";"
     cursor.execute(query)
     allShipments = cursor.fetchall()
     now = datetime.datetime.now()
@@ -895,7 +949,8 @@ def updateWarehouseInventory():
             cursor.execute(query)
         print("Updated\n")
     cnx.commit()
-
+    input("")
+    os.system('cls')
 
 # checkout - update inventory and customer frequent buys
 def checkout():
