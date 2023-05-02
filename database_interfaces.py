@@ -504,23 +504,15 @@ def register():
 
     validRegion = False
     while validRegion == False:
-        nregion = input(
+        r = input(
             'Region:\n 1. North \n 2. South \n 3. East \n 4. West\n')
-        if int(nregion) == 1:
-            region = 'North'
+        try: 
+            region = int(r)
+        except:
+            input("Invalid region\n hit enter to retry")
+            continue
+        if region > 0 and region < 5: 
             validRegion = True
-        elif int(nregion) == 2:
-            region = 'South'
-            validRegion = True
-
-        elif int(nregion) == 3:
-            region = 'East'
-            validRegion = True
-
-        elif int(nregion) == 4:
-            region = 'West'
-            validRegion = True
-
         else:
             input('select a valid region\n hit enter to retry')
 
@@ -539,8 +531,8 @@ def register():
 
         else:
             uniqueID = True
-            insert = "INSERT INTO Customer(Customer_ID, First_Name, Last_Name, Phone_Number) Values (" + \
-                customer_id+',\''+firstName+'\',\''+lastName+'\',\''+phone+'\');'
+            insert = "INSERT INTO Customer(Customer_ID, First_Name, Last_Name, Phone_Number,Region) Values (" + \
+                customer_id+',\''+firstName+'\',\''+lastName+'\',\''+phone+'\','+ str(region) +");"
 
             try:
                 # Start a transaction so we can roll back if an error occurs
@@ -563,13 +555,24 @@ def register():
 
 def restock():
     os.system('cls')
-    RESTOCK_AMOUNT = 10
+    RESTOCK_AMOUNT = 20
     # Final all stores and products that need to be restocked
     # Query to find which products are low
+    # query = """SELECT i.Store_ID, i.UPC_Code, i.Amount, s.Region
+    #             FROM Inventory AS i
+    #             JOIN Store AS s ON i.Store_ID = s.Store_ID
+    #             WHERE i.Amount <= 5;"""
     query = """SELECT i.Store_ID, i.UPC_Code, i.Amount, s.Region
                 FROM Inventory AS i
                 JOIN Store AS s ON i.Store_ID = s.Store_ID
-                WHERE i.Amount <= 5;"""
+                WHERE i.Amount <= 5
+                AND i.UPC_Code NOT IN (
+                    SELECT ri.UPC_Code
+                    FROM Restock_Item AS ri
+                    JOIN Restock AS r ON ri.Stocking_ID = r.Stocking_ID
+                    WHERE r.Restock_Status = 'Placed'
+                    AND r.Store_ID = s.Store_ID
+                );"""
     cursor.execute(query)
     restockProducts = cursor.fetchall()
     restockProducts = sorted(
@@ -676,10 +679,10 @@ def printRestocks():
     for saleItem in allSaleItems:
         print(saleItem)
 
+
+
 # reorder between warehouse and vendor
 # create reorder req.
-
-
 def reorder():
     os.system('cls')
     query = "SELECT DISTINCT Warehouse_ID FROM Warehouse"  # get all warehouse ids
@@ -689,13 +692,30 @@ def reorder():
     for warehouse in warehouses:  # find the products that need reordering for each warehouse
 
         # input: store id (run to check for low stock and put in a reorder to nescessary vendor(s))
-        query = """
-                SELECT wi.UPC_Code, sb.Vendor_ID, wi.Amount
+        # query = """
+        #         SELECT wi.UPC_Code, sb.Vendor_ID, wi.Amount
+        #         FROM Warehouse_Inventory AS wi
+        #         JOIN Supplied_By AS sb ON wi.UPC_Code = sb.UPC_Code
+        #         JOIN Warehouse AS w ON wi.Warehouse_ID = w.Warehouse_ID
+        #         WHERE wi.Warehouse_ID =""" + str(warehouse[0]) + " AND wi.Amount < 100;"
+
+        query ="""  SELECT wi.UPC_Code, sb.Vendor_ID, wi.Amount
                 FROM Warehouse_Inventory AS wi
                 JOIN Supplied_By AS sb ON wi.UPC_Code = sb.UPC_Code
                 JOIN Warehouse AS w ON wi.Warehouse_ID = w.Warehouse_ID
-                WHERE wi.Warehouse_ID =""" + str(warehouse[0]) + " AND wi.Amount < 100;"
-
+                WHERE wi.Warehouse_ID =""" + str(warehouse[0]) + """ AND wi.Amount < 100
+                AND wi.UPC_Code NOT IN (
+                    SELECT ri.UPC_Code
+                    FROM Reorder_Item AS ri
+                    JOIN Reorder AS r ON ri.Reorder_ID = r.Reorder_ID
+                    WHERE r.Reorder_Status = 'ORDERED'
+                    AND r.Warehouse_ID =""" + str(warehouse[0]) + """
+                    UNION
+                    SELECT si.UPC_Code
+                    FROM Shipment_Item AS si
+                    JOIN Shipment AS sh ON si.Shipment_ID = sh.Shipment_ID
+                    WHERE sh.Shipment_Status = 1
+                    AND sh.Warehouse_ID =""" + str(warehouse[0])+");"
         cursor.execute(query)
         reorderProducts = cursor.fetchall()
         reorderProducts = sorted(
