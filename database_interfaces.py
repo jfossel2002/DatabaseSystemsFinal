@@ -12,6 +12,7 @@ cursor = cnx.cursor()
 
 
 def runMainMenu():
+    os.system('cls')
     runMenu = True
     while (runMenu):
         rselection = input("""Select interface:
@@ -22,12 +23,19 @@ def runMainMenu():
                 5. Vendor Shipment\n
                 6. Update Inventory\n
                 7. Update Warehouse Inventory\n
-                8. Checkout\n""")
+                8. Checkout\n
+                9: Exit\n""")
         try:
             selection = int(rselection)
         except:
             input("Invalid input\n press enter to retry")
-            # os.system('cls')
+            try: 
+                os.system('cls')
+            except :
+                 os.system('cls')
+            runMainMenu()
+        if ( selection<1 or selection>9): 
+            input("Invalid input\n press enter to retry")
             runMainMenu()
 
         match (selection):
@@ -50,27 +58,32 @@ def runMainMenu():
             case 9:
                 print("Exiting")
                 runMenu = False
+                os.system('cls')
                 break
             case _:
                 input("Invalid input\n press enter to retry")
                 runMainMenu()
 # OLAP
-
-
 def OLAP():
-    # os.system('cls')
+    os.system('cls')
+
     rselection = input("""Select overview:
             1. Inventory Value\n
             2. Total Product by Vendor\n
             3. Average Inventory Levels\n
             4. Top Customers\n
+            5. Best Sellers\n
             """)
     try:
         selection = int(rselection)
     except:
         input("Invalid input\n press enter to retry")
         OLAP()
-
+    
+    if ( selection<1 or selection>5): 
+        input("Invalid input\n press enter to retry")
+        OLAP()
+    os.system('cls')
     match (selection):
         case 1:
             # Total inventory value per store and region:
@@ -79,6 +92,19 @@ def OLAP():
                         JOIN Inventory i ON s.Store_ID = i.Store_ID
                         GROUP BY s.Region, s.Store_ID
                         WITH ROLLUP;"""
+            
+            try:
+                cursor.execute(query)
+                results = cursor.fetchall()
+                for row in results:
+                    if row[0] == None and row[1] == None: 
+                        print("Total enteprise inventory value: " + str(row[2]).strip('(').strip(')').strip(',').strip('Decimal')+ "\n")
+                    elif row[1] == None: 
+                        print("Total inventory value in Region "+ getRegion(row[0]) + ": " + str(row[2]).strip('(').strip(')').strip(',').strip('Decimal'))
+                    else:
+                        print("Inventory value in Store " + str(row[1]) +": " + str(row[2]).strip('(').strip(')').strip(',').strip('Decimal'))
+            except mysql.connector.Error as error:
+                input(error + "\npress enter to continue\n")
 
         case 2:
             # Total products supplied by each vendor, broken down by region:
@@ -90,6 +116,19 @@ def OLAP():
                     JOIN Warehouse w ON wi.Warehouse_ID = w.Warehouse_ID
                     GROUP BY v.Region, v.Name
                     WITH ROLLUP;"""
+            
+            try:
+                cursor.execute(query)
+                results = cursor.fetchall()
+                for row in results:
+                    if row[0] == None and row[1] == None: 
+                        print("Total unique products in Enterprie: " + str(row[2]))
+                    elif row[1] ==None:
+                        print("Total unique products in Region " + str(row[0]) + ": " + str(row[2]) ) 
+                    else:
+                        print("Total unique products from Vendor " + str(row[1]) + " in Region " + str(row[0]) + ": " + str(row[2]))
+            except mysql.connector.Error as error:
+                input(error + "\npress enter to continue\n")
         case 3:
             # Average inventory levels for each product type by region:
             query = """SELECT w.Region, p.Product_Type, AVG(i.Amount) as Avg_Inventory
@@ -98,46 +137,77 @@ def OLAP():
                         JOIN Product p ON i.UPC_Code = p.UPC_Code
                         GROUP BY w.Region, p.Product_Type
                         WITH ROLLUP;"""
+            try:
+                cursor.execute(query)
+                results = cursor.fetchall()
+                for row in results:
+                    if row[0] == None and row[1] == None:
+                        print("Average enterprise warehouse stock: " + str(row[2]).strip('Decimal'))
+                    elif row[1] == None: 
+                        print("Average warehouse stock in Region " + str(row[0]) + ": " + str(row[2]).strip('Decimal'))
+                    else: 
+                        print("Average warehouse stock of " + str(row[1]) + " in Region " + str(row[0]) + ": " + str(row[2]).strip('Decimal'))
+
+            except mysql.connector.Error as error:
+                input(error + "\npress enter to continue\n")
         case 4:
             # Top 10 customers by total sales in each region:
-            query = """WITH CustomerSalesByRegion AS (
-                    SELECT s.Region, c.Customer_ID, c.First_Name, c.Last_Name, SUM(si.Local_Price * si.Quanity) as Total_Sales,
-                            RANK() OVER (PARTITION BY s.Region ORDER BY SUM(si.Local_Price * si.Quanity) DESC) as Sales_Rank
+            query = """WITH CustomerSales AS (
+                    SELECT c.Customer_ID, c.First_Name, c.Last_Name, SUM(si.Local_Price * si.Quanity) as Total_Sales,
+                            RANK() OVER (ORDER BY SUM(si.Local_Price * si.Quanity) DESC) as Sales_Rank
                     FROM Store s
                     JOIN Sale sa ON s.Store_ID = sa.Store_ID
                     JOIN Sale_Item si ON sa.Sale_ID = si.Sale_ID
                     JOIN Customer c ON sa.Customer_ID = c.Customer_ID
-                    GROUP BY s.Region, c.Customer_ID, c.First_Name, c.Last_Name
+                    GROUP BY c.Customer_ID, c.First_Name, c.Last_Name
                     )
-                    SELECT * FROM CustomerSalesByRegion WHERE Sales_Rank <= 10;"""
+                    SELECT * FROM CustomerSales WHERE Sales_Rank <= 10;"""
+            try:
+                cursor.execute(query)
+                results = cursor.fetchall()
+                print("Top Customers (amount spent): ")
+                for row in results:
+                    print(str(row[4])+ ". " + str(row[1]) + " " + str(row[2]) + " (ID: " + str(row[0]) + ") Total purchase amount : " + str(row[3]).strip('Decimal'))
+            except mysql.connector.Error as error:
+                input(error + "\npress enter to continue\n")
 
         case 5:
             # best sellers
-            query = """ WITH SalesByRegion AS (
-                        SELECT s.Region, p.Name, p.UPC_Code, SUM(si.Local_Price * si.Quanity) as Total_Sales,
-                                ROW_NUMBER() OVER (PARTITION BY s.Region ORDER BY SUM(si.Local_Price * si.Quanity) DESC) as Sales_Rank
+            query = """ WITH Sales AS (
+                        SELECT s.Store_ID, p.Name, p.UPC_Code, SUM(si.Quanity) as Total_Sales,
+                                ROW_NUMBER() OVER (PARTITION BY s.Store_ID ORDER BY SUM(si.Quanity) DESC) as Sales_Rank
                         FROM Store s
                         JOIN Sale sa ON s.Store_ID = sa.Store_ID
                         JOIN Sale_Item si ON sa.Sale_ID = si.Sale_ID
                         JOIN Product p ON si.UPC_Code = p.UPC_Code
-                        GROUP BY s.Region, p.Name, p.UPC_Code
+                        GROUP BY s.Store_ID, p.Name, p.UPC_Code
                         )
-                        SELECT * FROM SalesByRegion WHERE Sales_Rank <= 5;"""
+                        SELECT * FROM Sales WHERE Sales_Rank <= 5;"""
+            try:
+                cursor.execute(query)
+                results = cursor.fetchall()
+                print("Best Sellers by Store:")
+                store = ""
+                for row in results:
+                    if str(row[0]) != store: 
+                        store = str(row[0])
+                        space = "\n Store " + store + ": \n"
+                    else: 
+                        space =""
 
-    try:
-        cursor.execute(query)
-        results = cursor.fetchall()
-        for row in results:
-            print(row)
-    except mysql.connector.Error as error:
-        input(error + "\npress enter to continue\n")
+                    print(space + str(row[4]) + ". " + row[1] +" (ID: " + str(row[2]) + ") " + "Quantity Sold: " + str(row[3]).strip('Decimal')  )
+            except mysql.connector.Error as error:
+                print(error)
+                input( "\npress enter to continue\n")
+
 
     rselection = input("")
-
+    os.system('cls')
 
 # web orders
 def webOrder():
-    # input: location, products, quant (check if products are in closest store, )
+    os.system('cls')
+
     login = input("input ur id to login or -1 to register: \n")
     # check in customer exists in database
     query = "SELECT * FROM Customer WHERE Customer_ID = " + login
@@ -424,8 +494,8 @@ def addSaleItem(product_UPC, amount, SALE_ID, price):
 
 # Helper function to add a new user to the database
 def register():
-    print("")
-    # os.system('cls')
+    os.system('cls')
+
     firstName = input("First Name: ")
 
     lastName = input("Last Name: ")
@@ -492,6 +562,7 @@ def register():
 
 
 def restock():
+    os.system('cls')
     RESTOCK_AMOUNT = 10
     # Final all stores and products that need to be restocked
     # Query to find which products are low
@@ -610,6 +681,7 @@ def printRestocks():
 
 
 def reorder():
+    os.system('cls')
     query = "SELECT DISTINCT Warehouse_ID FROM Warehouse"  # get all warehouse ids
     cursor.execute(query)
     warehouses = cursor.fetchall()
@@ -688,6 +760,7 @@ def addReorderItem(product_UPC, amount, reorder_id):
 
 
 def shipment():
+    os.system('cls')
     query = "SELECT DISTINCT Vendor_ID FROM Vendor"  # get all vendors
     cursor.execute(query)
     vendors = cursor.fetchall()
@@ -754,10 +827,8 @@ def addShipmentItem(product_UPC, amount, Shipment_ID):
 
 
 def updateInventory():
-    # input: store id ( run to check if shipments needs handling at the store )
-    # return any requests
-    # input: order fullfillment with shipment date
     # Find all Pending Restocks
+    os.system('cls')
     query = "SELECT * FROM Restock WHERE Restock_Status = 'Placed';"
     cursor.execute(query)
     allRestocks = cursor.fetchall()
@@ -792,6 +863,7 @@ def updateInventory():
 
 
 def updateWarehouseInventory():
+    os.system('cls')
     query = "SELECT * FROM Shipment WHERE Shipment_Status = 1;"
     cursor.execute(query)
     allShipments = cursor.fetchall()
@@ -826,8 +898,6 @@ def updateWarehouseInventory():
 
 
 # checkout - update inventory and customer frequent buys
-
-
 def checkout():
     # input: customer info ,  product id and quantity , store id
     input()
