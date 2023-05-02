@@ -12,7 +12,7 @@ cursor = cnx.cursor()
 
 
 def runMainMenu():
-    os.system('cls')
+    os.system('clear')
     runMenu = True
     while (runMenu):
         rselection = input("""Select interface:
@@ -29,12 +29,12 @@ def runMainMenu():
             selection = int(rselection)
         except:
             input("Invalid input\n press enter to retry")
-            try: 
-                os.system('cls')
-            except :
-                 os.system('cls')
+            try:
+                os.system('clear')
+            except:
+                os.system('clear')
             runMainMenu()
-        if ( selection<1 or selection>9): 
+        if (selection < 1 or selection > 9):
             input("Invalid input\n press enter to retry")
             runMainMenu()
 
@@ -58,14 +58,16 @@ def runMainMenu():
             case 9:
                 print("Exiting")
                 runMenu = False
-                os.system('cls')
+                os.system('clear')
                 break
             case _:
                 input("Invalid input\n press enter to retry")
                 runMainMenu()
 # OLAP
+
+
 def OLAP():
-    os.system('cls')
+    os.system('clear')
 
     rselection = input("""Select overview:
             1. Inventory Value\n
@@ -79,11 +81,11 @@ def OLAP():
     except:
         input("Invalid input\n press enter to retry")
         OLAP()
-    
-    if ( selection<1 or selection>5): 
+
+    if (selection < 1 or selection > 5):
         input("Invalid input\n press enter to retry")
         OLAP()
-    os.system('cls')
+    os.system('clear')
     match (selection):
         case 1:
             # Total inventory value per store and region:
@@ -92,17 +94,20 @@ def OLAP():
                         JOIN Inventory i ON s.Store_ID = i.Store_ID
                         GROUP BY s.Region, s.Store_ID
                         WITH ROLLUP;"""
-            
+
             try:
                 cursor.execute(query)
                 results = cursor.fetchall()
                 for row in results:
-                    if row[0] == None and row[1] == None: 
-                        print("Total enteprise inventory value: " + str(row[2]).strip('(').strip(')').strip(',').strip('Decimal')+ "\n")
-                    elif row[1] == None: 
-                        print("Total inventory value in Region "+ getRegion(row[0]) + ": " + str(row[2]).strip('(').strip(')').strip(',').strip('Decimal'))
+                    if row[0] == None and row[1] == None:
+                        print("Total enteprise inventory value: " + str(row[2]).strip(
+                            '(').strip(')').strip(',').strip('Decimal') + "\n")
+                    elif row[1] == None:
+                        print("Total inventory value in Region " + getRegion(row[0]) + ": " + str(
+                            row[2]).strip('(').strip(')').strip(',').strip('Decimal'))
                     else:
-                        print("Inventory value in Store " + str(row[1]) +": " + str(row[2]).strip('(').strip(')').strip(',').strip('Decimal'))
+                        print("Inventory value in Store " + str(row[1]) + ": " + str(
+                            row[2]).strip('(').strip(')').strip(',').strip('Decimal'))
             except mysql.connector.Error as error:
                 input(error + "\npress enter to continue\n")
 
@@ -116,17 +121,20 @@ def OLAP():
                     JOIN Warehouse w ON wi.Warehouse_ID = w.Warehouse_ID
                     GROUP BY v.Region, v.Name
                     WITH ROLLUP;"""
-            
+
             try:
                 cursor.execute(query)
                 results = cursor.fetchall()
                 for row in results:
-                    if row[0] == None and row[1] == None: 
-                        print("Total unique products in Enterprie: " + str(row[2]))
-                    elif row[1] ==None:
-                        print("Total unique products in Region " + str(row[0]) + ": " + str(row[2]) ) 
+                    if row[0] == None and row[1] == None:
+                        print(
+                            "Total unique products in Enterprie: " + str(row[2]))
+                    elif row[1] == None:
+                        print("Total unique products in Region " +
+                              str(row[0]) + ": " + str(row[2]))
                     else:
-                        print("Total unique products from Vendor " + str(row[1]) + " in Region " + str(row[0]) + ": " + str(row[2]))
+                        print("Total unique products from Vendor " +
+                              str(row[1]) + " in Region " + str(row[0]) + ": " + str(row[2]))
             except mysql.connector.Error as error:
                 input(error + "\npress enter to continue\n")
         case 3:
@@ -142,11 +150,14 @@ def OLAP():
                 results = cursor.fetchall()
                 for row in results:
                     if row[0] == None and row[1] == None:
-                        print("Average enterprise warehouse stock: " + str(row[2]).strip('Decimal'))
-                    elif row[1] == None: 
-                        print("Average warehouse stock in Region " + str(row[0]) + ": " + str(row[2]).strip('Decimal'))
-                    else: 
-                        print("Average warehouse stock of " + str(row[1]) + " in Region " + str(row[0]) + ": " + str(row[2]).strip('Decimal'))
+                        print("Average enterprise warehouse stock: " +
+                              str(row[2]).strip('Decimal'))
+                    elif row[1] == None:
+                        print("Average warehouse stock in Region " +
+                              str(row[0]) + ": " + str(row[2]).strip('Decimal'))
+                    else:
+                        print("Average warehouse stock of " + str(row[1]) + " in Region " + str(
+                            row[0]) + ": " + str(row[2]).strip('Decimal'))
 
             except mysql.connector.Error as error:
                 input(error + "\npress enter to continue\n")
@@ -167,7 +178,8 @@ def OLAP():
                 results = cursor.fetchall()
                 print("Top Customers (amount spent): ")
                 for row in results:
-                    print(str(row[4])+ ". " + str(row[1]) + " " + str(row[2]) + " (ID: " + str(row[0]) + ") Total purchase amount : " + str(row[3]).strip('Decimal'))
+                    print(str(row[4]) + ". " + str(row[1]) + " " + str(row[2]) + " (ID: " + str(
+                        row[0]) + ") Total purchase amount : " + str(row[3]).strip('Decimal'))
             except mysql.connector.Error as error:
                 input(error + "\npress enter to continue\n")
 
@@ -189,24 +201,26 @@ def OLAP():
                 print("Best Sellers by Store:")
                 store = ""
                 for row in results:
-                    if str(row[0]) != store: 
+                    if str(row[0]) != store:
                         store = str(row[0])
                         space = "\n Store " + store + ": \n"
-                    else: 
-                        space =""
+                    else:
+                        space = ""
 
-                    print(space + str(row[4]) + ". " + row[1] +" (ID: " + str(row[2]) + ") " + "Quantity Sold: " + str(row[3]).strip('Decimal')  )
+                    print(space + str(row[4]) + ". " + row[1] + " (ID: " + str(
+                        row[2]) + ") " + "Quantity Sold: " + str(row[3]).strip('Decimal'))
             except mysql.connector.Error as error:
                 print(error)
-                input( "\npress enter to continue\n")
-
+                input("\npress enter to continue\n")
 
     rselection = input("")
-    os.system('cls')
+    os.system('clear')
 
 # web orders
+
+
 def webOrder():
-    os.system('cls')
+    os.system('clear')
 
     login = input("input ur id to login or -1 to register: \n")
     # check if customer exists in database
@@ -494,7 +508,7 @@ def addSaleItem(product_UPC, amount, SALE_ID, price):
 
 # Helper function to add a new user to the database
 def register():
-    os.system('cls')
+    os.system('clear')
 
     firstName = input("First Name: ")
 
@@ -506,12 +520,12 @@ def register():
     while validRegion == False:
         r = input(
             'Region:\n 1. North \n 2. South \n 3. East \n 4. West\n')
-        try: 
+        try:
             region = int(r)
         except:
             input("Invalid region\n hit enter to retry")
             continue
-        if region > 0 and region < 5: 
+        if region > 0 and region < 5:
             validRegion = True
         else:
             input('select a valid region\n hit enter to retry')
@@ -532,7 +546,8 @@ def register():
         else:
             uniqueID = True
             insert = "INSERT INTO Customer(Customer_ID, First_Name, Last_Name, Phone_Number,Region) Values (" + \
-                customer_id+',\''+firstName+'\',\''+lastName+'\',\''+phone+'\','+ str(region) +");"
+                customer_id+',\''+firstName+'\',\''+lastName + \
+                '\',\''+phone+'\',' + str(region) + ");"
 
             try:
                 # Start a transaction so we can roll back if an error occurs
@@ -554,7 +569,7 @@ def register():
 
 
 def restock():
-    os.system('cls')
+    os.system('clear')
     RESTOCK_AMOUNT = 20
     # Final all stores and products that need to be restocked
     # Query to find which products are low
@@ -584,6 +599,11 @@ def restock():
     input("Press Enter to restock")
     # Subtract products from warehouse_inventories
     for product in restockProducts:
+        query = "SELECT i.Max_Capacity FROM Inventory as i WHERE i.Store_ID = " + \
+            str(product[0])
+        cursor.execute(query)
+        # Set Restock Amount to fill to max
+        RESTOCK_AMOUNT = cursor.fetchall()[0][0]-product[2]
         query = "UPDATE Warehouse_Inventory AS wi JOIN Warehouse AS w ON wi.Warehouse_ID = w.Warehouse_ID SET wi.Amount = wi.Amount - " + \
             str(RESTOCK_AMOUNT) + " WHERE w.Region = \'" + getRegion(product[3]) + \
             "\' AND wi.UPC_Code = " + str(product[1]) + ";"
@@ -680,11 +700,11 @@ def printRestocks():
         print(saleItem)
 
 
-
 # reorder between warehouse and vendor
 # create reorder req.
 def reorder():
-    os.system('cls')
+    REORDER_AMOUNT = 50
+    os.system('clear')
     query = "SELECT DISTINCT Warehouse_ID FROM Warehouse"  # get all warehouse ids
     cursor.execute(query)
     warehouses = cursor.fetchall()
@@ -699,7 +719,7 @@ def reorder():
         #         JOIN Warehouse AS w ON wi.Warehouse_ID = w.Warehouse_ID
         #         WHERE wi.Warehouse_ID =""" + str(warehouse[0]) + " AND wi.Amount < 100;"
 
-        query ="""  SELECT wi.UPC_Code, sb.Vendor_ID, wi.Amount
+        query = """  SELECT wi.UPC_Code, sb.Vendor_ID, wi.Amount, wi.Warehouse_ID
                 FROM Warehouse_Inventory AS wi
                 JOIN Supplied_By AS sb ON wi.UPC_Code = sb.UPC_Code
                 JOIN Warehouse AS w ON wi.Warehouse_ID = w.Warehouse_ID
@@ -732,17 +752,23 @@ def reorder():
         currVendor = -1
         reorder_id = -2
         for product in reorderProducts:
+            query = "SELECT wi.Max_Capacity FROM Warehouse_Inventory as wi WHERE wi.Warehouse_ID = " + \
+                str(product[3])
+            cursor.execute(query)
+            # Set Restock Amount to fill to max
+            REORDER_AMOUNT = cursor.fetchall()[0][0]-product[2]
+            print(REORDER_AMOUNT)
             vendorId = product[1]
 
             if vendorId != currVendor:
                 # create new reorder, add curr product
                 reorder_id = addReorder(warehouse[0], vendorId)
                 currVendor = vendorId
-                addReorderItem(product[0], 50, reorder_id)
+                addReorderItem(product[0], REORDER_AMOUNT, reorder_id)
                 cnx.commit()
             else:
                 # add to curr reorder
-                addReorderItem(product[0], 50, reorder_id)
+                addReorderItem(product[0], REORDER_AMOUNT, reorder_id)
                 cnx.commit()
 
 
@@ -780,30 +806,29 @@ def addReorderItem(product_UPC, amount, reorder_id):
 
 
 def shipment():
-    os.system('cls')
-    vendor_id = input("Input Vendor ID: ") 
+    os.system('clear')
+    vendor_id = input("Input Vendor ID: ")
     query = "SELECT * FROM Vendor WHERE Vendor_ID =" + vendor_id + ";"
     try:
         cursor.execute(query)
     except mysql.connector.Error as error:
         input(error + "\npress enter to continue\n")
-    
-   
+
     while not cursor.fetchone():
-        os.system('cls')
-        vendor_id = input("Input Valid Vendor ID: ") 
+        os.system('clear')
+        vendor_id = input("Input Valid Vendor ID: ")
         query = "SELECT * FROM Vendor WHERE Vendor_ID =" + vendor_id + ";"
         try:
             cursor.execute(query)
         except mysql.connector.Error as error:
             print(error)
-            input( "\npress enter to continue\n")
-    os.system('cls')
+            input("\npress enter to continue\n")
+    os.system('clear')
 
-    # query = "SELECT DISTINCT Vendor_ID FROM Vendor WHERE Vendor_ID = " + vendor_id + ";" 
+    # query = "SELECT DISTINCT Vendor_ID FROM Vendor WHERE Vendor_ID = " + vendor_id + ";"
     # cursor.execute(query)
     # vendors = cursor.fetchall()
-    
+
     query = "SELECT * FROM Reorder WHERE Vendor_ID =" + \
         vendor_id + " AND Reorder_Status = 'ORDERED';"
     cursor.execute(query)
@@ -821,11 +846,13 @@ def shipment():
             str(order[0]) + "; "
         cursor.execute(query)
         for product in products:
-            addShipmentItem(product[1], 50, shipment_id)
+            addShipmentItem(product[1], product[0], shipment_id)
             print("Order " + str(order[0]) + " to warehouse " + str(order[2]))
             cnx.commit()
 
     input("")
+
+
 def addShipment(warehouse, vendor):
     cursor.execute("START TRANSACTION")
     try:
@@ -866,24 +893,23 @@ def addShipmentItem(product_UPC, amount, Shipment_ID):
 
 def updateInventory():
     # Find all Pending Restock
-    os.system('cls')
-    store_id = input("Input Store ID: ") 
+    os.system('clear')
+    store_id = input("Input Store ID: ")
     query = "SELECT * FROM Store WHERE Store_ID =" + store_id + ";"
     try:
         cursor.execute(query)
     except mysql.connector.Error as error:
         input(error + "\npress enter to continue\n")
-    
-   
+
     while not cursor.fetchone():
-        os.system('cls')
-        store_id = input("Input Valid Store ID: ") 
+        os.system('clear')
+        store_id = input("Input Valid Store ID: ")
         query = "SELECT * FROM Store WHERE Store_ID =" + store_id + ";"
         try:
             cursor.execute(query)
         except mysql.connector.Error as error:
             input(error + "\npress enter to continue\n")
-        
+
     query = "SELECT * FROM Restock WHERE Restock_Status = 'Placed' AND Store_ID =" + store_id + ";"
     cursor.execute(query)
     allRestocks = cursor.fetchall()
@@ -916,29 +942,29 @@ def updateInventory():
         print("Updated\n")
     cnx.commit()
     input("")
-    os.system('cls')
+    os.system('clear')
 
 
 def updateWarehouseInventory():
-    os.system('cls')
-    warehouse_id = input("Input Warehouse ID: ") 
+    os.system('clear')
+    warehouse_id = input("Input Warehouse ID: ")
     query = "SELECT * FROM Warehouse WHERE Warehouse_ID =" + warehouse_id + ";"
     try:
         cursor.execute(query)
     except mysql.connector.Error as error:
         input(error + "\npress enter to continue\n")
-    
-   
+
     while not cursor.fetchone():
-        os.system('cls')
-        warehouse_id = input("Input Valid Warehouse ID: ") 
+        os.system('clear')
+        warehouse_id = input("Input Valid Warehouse ID: ")
         query = "SELECT * FROM Warehouse WHERE Warehouse_ID =" + warehouse_id + ";"
         try:
             cursor.execute(query)
         except mysql.connector.Error as error:
             input(error + "\npress enter to continue\n")
-    os.system('cls')
-    query = "SELECT * FROM Shipment WHERE Shipment_Status = 1 and Warehouse_ID = " + warehouse_id +";"
+    os.system('clear')
+    query = "SELECT * FROM Shipment WHERE Shipment_Status = 1 and Warehouse_ID = " + \
+        warehouse_id + ";"
     cursor.execute(query)
     allShipments = cursor.fetchall()
     now = datetime.datetime.now()
@@ -970,9 +996,11 @@ def updateWarehouseInventory():
         print("Updated\n")
     cnx.commit()
     input("")
-    os.system('cls')
+    os.system('clear')
 
 # checkout - update inventory and customer frequent buys
+
+
 def checkout():
     # input: customer info ,  product id and quantity , store id
     input()
