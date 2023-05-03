@@ -18,14 +18,15 @@ def runMainMenu():
         rselection = input("""Select interface:
                 1. OLAP\n
                 2. Web Order\n
-                3. Reorder\n
+                3. Reorder Warehouse\n
                 4. Restock Store\n
                 5. Vendor Shipment\n
                 6. Update Inventory\n
                 7. Update Warehouse Inventory\n
-                8. Checkout\n]
+                8. Checkout\n
                 9. Place an Order \n
-                10: Exit\n""")
+                10. Place a Stock \n
+                11: Exit\n""")
         try:
             selection = int(rselection)
         except:
@@ -35,7 +36,7 @@ def runMainMenu():
             except:
                 os.system('clear')
             runMainMenu()
-        if (selection < 1 or selection > 9):
+        if (selection < 1 or selection > 11):
             input("Invalid input\n press enter to retry")
             runMainMenu()
 
@@ -59,6 +60,8 @@ def runMainMenu():
             case 9:
                 order()
             case 10:
+                stock()
+            case 11:
                 print("Exiting")
                 runMenu = False
                 os.system('clear')
@@ -237,7 +240,7 @@ def webOrder():
         # no id
         login = register()
 
-    #get  info for instock products (accross all stores)
+    # get  info for instock products (accross all stores)
     query = """
         SELECT DISTINCT p.name, SUM(i.Amount), p.UPC_Code, p.Price
         FROM Inventory i
@@ -294,7 +297,7 @@ def purchaseProduct(login, avaliable_products):
     cursor.execute(query)
     customerRegion = cursor.fetchall()
 
-    #get store info for each store where product is in stock
+    # get store info for each store where product is in stock
     query = "SELECT st.Store_ID, st.Region, p.Name, i.Amount, p.UPC_Code, p.Price FROM Inventory i JOIN Product p ON i.UPC_Code = p.UPC_Code JOIN Store st ON i.Store_ID = st.Store_ID WHERE p.UPC_Code =" + \
         str(avaliable_products[int(product_selection)][2])
     cursor.execute(query)
@@ -319,7 +322,7 @@ def purchaseProduct(login, avaliable_products):
                 if (inRegion):
                     if (customerRegion[0][0] == str(store[1])):
                         if (intAmount >= float(store[3])):
-                            #update inventory of the item purchased for the store it was purchased from 
+                            # update inventory of the item purchased for the store it was purchased from
                             query = "UPDATE Inventory SET Amount = Amount -" + \
                                 str(store[3]) + " WHERE store_id = " + \
                                 str(store[0]) + " AND UPC_Code = " + \
@@ -643,6 +646,7 @@ def restock():
 def stock():
     input()
 
+
 def getRegion(i):
     if (i == 1):
         return "North"
@@ -652,6 +656,116 @@ def getRegion(i):
         return "East"
     if (i == 4):
         return "West"
+
+
+def stock():
+  # store login
+    os.system('clear')
+    store_id = input("Input Store ID: ")
+    query = "SELECT * FROM Store WHERE Store_ID =" + store_id + ";"
+    try:
+        cursor.execute(query)
+    except mysql.connector.Error as error:
+        input(error + "\npress enter to continue\n")
+
+    while not cursor.fetchone():
+        os.system('clear')
+        store_id = input("Input Valid Store ID: ")
+        query = "SELECT * FROM Store WHERE Store_ID =" + store_id + ";"
+        try:
+            cursor.execute(query)
+        except mysql.connector.Error as error:
+            input(error + "\npress enter to continue\n")
+
+    # print list of products possible to stock
+    query = """ SELECT 
+                p.UPC_Code,
+                p.Name,
+                s.Region
+                FROM Inventory AS i
+                JOIN Product AS p ON i.UPC_Code = p.UPC_Code
+                JOIN Store AS s ON i.Store_ID = s.Store_ID
+                WHERE i.Amount < i.Max_Capacity 
+                AND i.Store_ID = """ + str(store_id)
+    cursor.execute(query)
+    avaliable_products = cursor.fetchall()
+    allOrders = multiStock(store_id, avaliable_products)
+
+    restock_id = -1
+    restock_id = addRestock(store_id, avaliable_products[0][2])
+    for order in allOrders:
+        # query = "SELECT wi.Max_Capacity FROM Warehouse_Inventory as wi WHERE wi.Warehouse_ID = " + \
+        #     str(product[3])
+        # cursor.execute(query)
+        RESTOCK_AMOUNT = order[2]
+        addRestockItem(order[0], RESTOCK_AMOUNT, restock_id)
+    cnx.commit()
+
+
+def multiStock(login, avalibleProducts):
+    activeStock = True
+    allStocks = []
+    while (activeStock):
+        order = stockProduct(login, avalibleProducts)
+        for i in range(0, len(avalibleProducts)):
+            # print(avalibleProducts[i][2])
+            # print(purchase[1][1])
+            if (str(avalibleProducts[i][0]) == str(order[0])):
+                avalibleProducts.pop(i)
+                break
+        allStocks.append(order)
+        choice = input(
+            "Would you like to purchase any additional products? Yes/No")
+        if (choice.lower() == "no"):
+            activeStock = False
+            break
+
+    return allStocks
+
+
+def stockProduct(wlogin, avaliable_products):
+    validSelection = False
+    validAmount = False
+    while ((not validSelection) or (not validAmount)):
+        index = 0
+        for product in avaliable_products:
+            query = """SELECT (Max_Capacity - Amount) AS Available_Capacity
+                    FROM Inventory
+                    WHERE UPC_Code = """ + str(product[0]) + " AND Store_ID = " + wlogin + ";"
+            cursor.execute(query)
+            capacity = cursor.fetchall()
+            print("Product " + str(index) + ": " +
+                  str(product[1]) + " Quantity Avalible for Purchase: " + str(capacity[0][0]))
+            index += 1
+        product_selection = input(
+            "Enter the number corresponding to the product you want to stock: \n")
+        try:
+            if (int(product_selection) > len(avaliable_products)-1 or int(product_selection) < 0):
+                input("Not a valid product please press enter to try again")
+                continue
+            else:
+                validSelection = True
+        except:
+            input("Not a valid product please press enter to try again")
+            continue
+        amount = input(
+            "Enter the amount you want to stock: \n")
+
+        try:
+            intAmount = int(amount)
+            if (intAmount > float(capacity[0][0])):
+                input("Not enough storage for that product, Press enter to retry")
+                continue
+            else:
+                validAmount = True
+        except:
+            input("Invalid amount please press enter to try again")
+            continue
+
+    stock = [avaliable_products[int(product_selection)][0], avaliable_products[int(
+        product_selection)][2], intAmount]
+
+    return stock
 
 
 def addRestock(store, warehouse):  # Helper to add a restock to the database
@@ -782,8 +896,9 @@ def reorder():
                 addReorderItem(product[0], REORDER_AMOUNT, reorder_id)
                 cnx.commit()
 
+
 def order():
-    # warehouse login 
+    # warehouse login
     os.system('clear')
     warehouse_id = input("Input Warehouse ID: ")
     query = "SELECT * FROM Warehouse WHERE Warehouse_ID =" + warehouse_id + ";"
@@ -801,14 +916,18 @@ def order():
         except mysql.connector.Error as error:
             input(error + "\npress enter to continue\n")
 
-    #print list of products possible to order 
-    query=""" SELECT p.UPC_Code, p.Name AS Product_Name, v.Vendor_ID, v.Name AS Vendor_Name
-                FROM Product AS p
-                JOIN Supplied_By AS sb ON p.UPC_Code = sb.UPC_Code
-                JOIN Vendor AS v ON sb.Vendor_ID = v.Vendor_ID
-                ORDER BY p.UPC_Code, v.Vendor_ID;
-                """
-    cursor.execute(query) 
+    # print list of products possible to order
+    query = """ SELECT 
+            p.UPC_Code, 
+            p.Name AS Product_Name, 
+            v.Vendor_ID, 
+            v.Name AS Vendor_Name
+            FROM Product AS p
+            JOIN Supplied_By AS sb ON p.UPC_Code = sb.UPC_Code
+            JOIN Vendor AS v ON sb.Vendor_ID = v.Vendor_ID
+            JOIN Warehouse_Inventory AS wi ON p.UPC_Code = wi.UPC_Code
+            WHERE wi.Warehouse_ID = """ + warehouse_id + " AND wi.Amount < wi.Max_Capacity ORDER BY p.UPC_Code, v.Vendor_ID;"
+    cursor.execute(query)
     avaliable_products = cursor.fetchall()
     allOrders = multiOrder(warehouse_id, avaliable_products)
 
@@ -818,7 +937,7 @@ def order():
         # query = "SELECT wi.Max_Capacity FROM Warehouse_Inventory as wi WHERE wi.Warehouse_ID = " + \
         #     str(product[3])
         # cursor.execute(query)
-        
+
         REORDER_AMOUNT = order[2]
         print(REORDER_AMOUNT)
         vendorId = order[1]
@@ -841,13 +960,13 @@ def orderProduct(wlogin, avaliable_products):
     while ((not validSelection) or (not validAmount)):
         index = 0
         for product in avaliable_products:
-            query="""SELECT (Max_Capacity - Amount) AS Available_Capacity
+            query = """SELECT (Max_Capacity - Amount) AS Available_Capacity
                     FROM Warehouse_Inventory
-                    WHERE UPC_Code = """ + str(product[0]) + " AND Warehouse_ID = " + wlogin +";"
+                    WHERE UPC_Code = """ + str(product[0]) + " AND Warehouse_ID = " + wlogin + ";"
             cursor.execute(query)
             capacity = cursor.fetchall()
             print("Product " + str(index) + ": " +
-                    str(product[1]) + " Quantity Avalible for Purchase: " + str(capacity[0][0]))
+                  str(product[1]) + " Quantity Avalible for Purchase: " + str(capacity[0][0]))
             index += 1
         product_selection = input(
             "Enter the number corresponding to the product you want to stock: \n")
@@ -862,7 +981,7 @@ def orderProduct(wlogin, avaliable_products):
             continue
         amount = input(
             "Enter the amount you want to stock: \n")
-        
+
         try:
             intAmount = int(amount)
             if (intAmount > float(capacity[0][0])):
@@ -874,9 +993,8 @@ def orderProduct(wlogin, avaliable_products):
             input("Invalid amount please press enter to try again")
             continue
 
-
-    
-    order = [avaliable_products[int(product_selection)][0],avaliable_products[int(product_selection)][2],intAmount]
+    order = [avaliable_products[int(product_selection)][0], avaliable_products[int(
+        product_selection)][2], intAmount]
 
     return order
 
@@ -901,7 +1019,6 @@ def multiOrder(login, avalibleProducts):
             break
 
     return allOrders
-
 
 
 def addReorder(warehouse_id, vendor_id):
