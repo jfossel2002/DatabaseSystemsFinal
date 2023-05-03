@@ -28,10 +28,10 @@ def customerMenu():
                 os.system('clear')
             except:
                 os.system('clear')
-            customerMenu()
+            continue
         if (fselection < 1 or fselection > 3):
             input("Invalid input\n press enter to retry")
-            customerMenu()
+            continue
         match (fselection):
             case 1:
                 webOrder()
@@ -44,7 +44,7 @@ def customerMenu():
                 break
             case _:
                 input("Invalid input\n press enter to retry")
-                customerMenu()
+                continue
 
 
 def StoreMenu():
@@ -55,7 +55,8 @@ def StoreMenu():
         1. Update Inventory\n
         2. Restock\n
         3. Stock\n
-        4. Exit
+        4. Sales History\n
+        5. Exit
         """)
         try:
             fselection = int(first_selection)
@@ -65,10 +66,10 @@ def StoreMenu():
                 os.system('clear')
             except:
                 os.system('clear')
-            StoreMenu()
-        if (fselection < 1 or fselection > 4):
+            continue
+        if (fselection < 1 or fselection > 5):
             input("Invalid input\n press enter to retry")
-            StoreMenu()
+            continue
         match (fselection):
             case 1:
                 updateInventory()
@@ -77,13 +78,15 @@ def StoreMenu():
             case 3:
                 stock()
             case 4:
+                salesHistory()
+            case 5:
                 print("Exiting")
                 runMenu = False
                 os.system('clear')
                 break
             case _:
                 input("Invalid input\n press enter to retry")
-                StoreMenu()
+                continue
 
 
 def WarehouseMenu():
@@ -104,10 +107,10 @@ def WarehouseMenu():
                 os.system('clear')
             except:
                 os.system('clear')
-            WarehouseMenu()
+            continue
         if (fselection < 1 or fselection > 4):
             input("Invalid input\n press enter to retry")
-            WarehouseMenu()
+            continue
         match (fselection):
             case 1:
                 updateWarehouseInventory()
@@ -122,7 +125,7 @@ def WarehouseMenu():
                 break
             case _:
                 input("Invalid input\n press enter to retry")
-                WarehouseMenu()
+                continue
 
 
 def VendorMenu():
@@ -141,10 +144,10 @@ def VendorMenu():
                 os.system('clear')
             except:
                 os.system('clear')
-            VendorMenu()
+            continue
         if (fselection < 1 or fselection > 2):
             input("Invalid input\n press enter to retry")
-            VendorMenu()
+            continue
         match (fselection):
             case 1:
                 shipment()
@@ -155,7 +158,7 @@ def VendorMenu():
                 break
             case _:
                 input("Invalid input\n press enter to retry")
-                VendorMenu()
+                continue
 
 
 def MarketMenu():
@@ -174,10 +177,10 @@ def MarketMenu():
                 os.system('clear')
             except:
                 os.system('clear')
-            MarketMenu()
+            continue
         if (fselection < 1 or fselection > 2):
             input("Invalid input\n press enter to retry")
-            MarketMenu()
+            continue
         match (fselection):
             case 1:
                 OLAP()
@@ -188,7 +191,7 @@ def MarketMenu():
                 break
             case _:
                 input("Invalid input\n press enter to retry")
-                MarketMenu()
+                continue
 
 
 def runMainMenu():
@@ -211,10 +214,10 @@ def runMainMenu():
                 os.system('clear')
             except:
                 os.system('clear')
-            runMainMenu()
+            continue
         if (fselection < 1 or fselection > 6):
             input("Invalid input\n press enter to retry")
-            runMainMenu()
+            continue
         match (fselection):
             case 1:
                 customerMenu()
@@ -233,7 +236,7 @@ def runMainMenu():
                 break
             case _:
                 input("Invalid input\n press enter to retry")
-                runMainMenu()
+                continue
 # OLAP
 
 
@@ -843,14 +846,14 @@ def stock():
             input(error + "\npress enter to continue\n")
 
     # print list of products possible to stock
-    query = """ SELECT 
+    query = """ SELECT
                 p.UPC_Code,
                 p.Name,
                 s.Region
                 FROM Inventory AS i
                 JOIN Product AS p ON i.UPC_Code = p.UPC_Code
                 JOIN Store AS s ON i.Store_ID = s.Store_ID
-                WHERE i.Amount < i.Max_Capacity 
+                WHERE i.Amount < i.Max_Capacity
                 AND i.Store_ID = """ + str(store_id)
     cursor.execute(query)
     avaliable_products = cursor.fetchall()
@@ -1082,10 +1085,10 @@ def order():
             input(error + "\npress enter to continue\n")
 
     # print list of products possible to order
-    query = """ SELECT 
-            p.UPC_Code, 
-            p.Name AS Product_Name, 
-            v.Vendor_ID, 
+    query = """ SELECT
+            p.UPC_Code,
+            p.Name AS Product_Name,
+            v.Vendor_ID,
             v.Name AS Vendor_Name
             FROM Product AS p
             JOIN Supplied_By AS sb ON p.UPC_Code = sb.UPC_Code
@@ -1429,17 +1432,17 @@ def purchaseHistory():
         login = register()
     query = """
     SELECT
-c.customer_id,
-c.first_name,
-c.last_name,
-	    	s.date,
-	    	si.UPC_Code,
-	    	p.name,
-        	si.Local_Price,
-	    	si.Quanity
-FROM
+    c.customer_id,
+    c.first_name,
+    c.last_name,
+	s.date,
+	si.UPC_Code,
+	p.name,
+    si.Local_Price,
+	si.Quanity
+    FROM
 	Customer c, Sale s, Sale_Item si, Product p
-WHERE
+    WHERE
 	c.customer_id = s.customer_id AND
 	s.sale_id = si.sale_id AND
 	si.UPC_Code = p.UPC_Code AND
@@ -1451,6 +1454,52 @@ WHERE
         formatted_date = purchase[3].strftime("%B %d, %Y")
         print(formatted_date + " Product: " + purchase[5] + " Quantity: " + str(
             purchase[7]) + " Cost Per Item: $" + str(purchase[6]) + " Total Cost: $" + str(purchase[6]*purchase[7]))
+
+
+def salesHistory():
+    # store login
+    os.system('clear')
+    store_id = input("Input Store ID: ")
+    query = "SELECT * FROM Store WHERE Store_ID =" + store_id + ";"
+    try:
+        cursor.execute(query)
+    except mysql.connector.Error as error:
+        input(error + "\npress enter to continue\n")
+
+    while not cursor.fetchone():
+        os.system('clear')
+        store_id = input("Input Valid Store ID: ")
+        query = "SELECT * FROM Store WHERE Store_ID =" + store_id + ";"
+        try:
+            cursor.execute(query)
+        except mysql.connector.Error as error:
+            input(error + "\npress enter to continue\n")
+    query = """
+    SELECT
+    s.Sale_ID,
+    s.Store_ID,
+    s.Date,
+    s.Customer_ID,
+    c.First_Name AS Customer_Name_First,
+    c.Last_Name AS Customer_Name_Last,
+    si.UPC_Code,
+    p.Name AS Product_Name,
+    si.Quanity,
+    si.Local_Price
+FROM Sale AS s
+JOIN Sale_Item AS si ON s.Sale_ID = si.Sale_ID
+JOIN Product AS p ON si.UPC_Code = p.UPC_Code
+JOIN Customer AS c ON s.Customer_ID = c.Customer_ID
+WHERE s.Store_ID = """ + store_id + " ORDER BY s.Date DESC;"
+
+    cursor.execute(query)
+    sales = cursor.fetchall()
+    print("Stores: " + str(store_id) + "'s sales history")
+    for sale in sales:
+        formatted_date = sale[2].strftime("%B %d, %Y")
+        print(formatted_date + ": Product: (" + str(sale[6]) + ") " + sale[7] + " Quantity: " + str(
+            sale[8]) + " Cost Per Item: $" + str(sale[9]) + " Total Cost: $" + str(sale[8]*sale[9]) + " Buyer: " + sale[4] + " " + sale[5])
+
 
 # checkout - update inventory and customer frequent buys
 
