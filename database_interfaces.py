@@ -56,7 +56,9 @@ def StoreMenu():
         2. Restock\n
         3. Stock\n
         4. Sales History\n
-        5. Exit
+        5. Restock History\n
+        6. View Inventory Levels\n
+        7. Exit
         """)
         try:
             fselection = int(first_selection)
@@ -67,7 +69,7 @@ def StoreMenu():
             except:
                 os.system('clear')
             continue
-        if (fselection < 1 or fselection > 5):
+        if (fselection < 1 or fselection > 7):
             input("Invalid input\n press enter to retry")
             continue
         match (fselection):
@@ -80,6 +82,10 @@ def StoreMenu():
             case 4:
                 salesHistory()
             case 5:
+                restockHistory()
+            case 6:
+                InventoryLevels()
+            case 7:
                 print("Exiting")
                 runMenu = False
                 os.system('clear')
@@ -87,6 +93,70 @@ def StoreMenu():
             case _:
                 input("Invalid input\n press enter to retry")
                 continue
+
+
+def restockHistory():
+    # store login
+    os.system('clear')
+    store_id = input("Input Store ID: ")
+    query = "SELECT * FROM Store WHERE Store_ID =" + store_id + ";"
+    try:
+        cursor.execute(query)
+    except mysql.connector.Error as error:
+        input(error + "\npress enter to continue\n")
+
+    while not cursor.fetchone():
+        os.system('clear')
+        store_id = input("Input Valid Store ID: ")
+        query = "SELECT * FROM Store WHERE Store_ID =" + store_id + ";"
+        try:
+            cursor.execute(query)
+        except mysql.connector.Error as error:
+            input(error + "\npress enter to continue\n")
+    query = """
+    SELECT
+    *
+FROM Restock AS s
+JOIN Restock_Item AS si ON s.Stocking_ID = si.Stocking_ID
+JOIN Product AS p ON si.UPC_Code = p.UPC_Code
+WHERE s.Store_ID = """ + store_id + " ORDER BY s.Date DESC, s.Time_Hour DESC, s.Time_Minute DESC;"
+    cursor.execute(query)
+    restocks = cursor.fetchall()
+    print("Stores: " + str(store_id) + "'s restock history")
+    for restock in restocks:
+        formatted_date = restock[1].strftime("%B %d, %Y")
+        print(formatted_date + " " + str(restock[2]) + ":" + str(restock[3]) + " Restock ID: " + str(restock[0]) + " Status: " + str(
+            restock[4]) + " Warehouse ID: " + str(restock[5]) + " Product: (" + str(restock[10]) + ") " + restock[11] + " Quantity: " + str(restock[7]))
+    input("Enter to Contiune")
+
+
+def InventoryLevels():
+    # store login
+    os.system('clear')
+    store_id = input("Input Store ID: ")
+    query = "SELECT * FROM Store WHERE Store_ID =" + store_id + ";"
+    try:
+        cursor.execute(query)
+    except mysql.connector.Error as error:
+        input(error + "\npress enter to continue\n")
+
+    while not cursor.fetchone():
+        os.system('clear')
+        store_id = input("Input Valid Store ID: ")
+        query = "SELECT * FROM Store WHERE Store_ID =" + store_id + ";"
+        try:
+            cursor.execute(query)
+        except mysql.connector.Error as error:
+            input(error + "\npress enter to continue\n")
+    query = "SELECT * FROM Inventory as i JOIN Product as p ON i.UPC_Code = p.UPC_Code where i.Store_ID = " + \
+        store_id + " ORDER BY i.Amount DESC"
+    cursor.execute(query)
+    inventory = cursor.fetchall()
+    print("Stores: " + str(store_id) + "'s Inventory Level:")
+    for item in inventory:
+        print("Product: (" + str(item[5]) + ") " + item[6] + " Amount: " + str(
+            item[0]) + " Max Capacity: " + str(item[2]) + " Price: $" + str(item[1]))
+    input("Enter to Contiune")
 
 
 def WarehouseMenu():
@@ -97,7 +167,9 @@ def WarehouseMenu():
         1. Update Warehouse Inventory\n
         2. Reorder\n
         3. Order\n
-        4. Exit
+        4. View Reorder/Order History\n
+        5. View Inventory Levels\n
+        6. Exit
         """)
         try:
             fselection = int(first_selection)
@@ -108,7 +180,7 @@ def WarehouseMenu():
             except:
                 os.system('clear')
             continue
-        if (fselection < 1 or fselection > 4):
+        if (fselection < 1 or fselection > 6):
             input("Invalid input\n press enter to retry")
             continue
         match (fselection):
@@ -119,6 +191,10 @@ def WarehouseMenu():
             case 3:
                 order()
             case 4:
+                reorderHistory()
+            case 5:
+                WarehouseInventoryLevels()
+            case 6:
                 print("Exiting")
                 runMenu = False
                 os.system('clear')
@@ -128,13 +204,77 @@ def WarehouseMenu():
                 continue
 
 
+def reorderHistory():
+    # warehouse login
+    os.system('clear')
+    warehouse_id = input("Input Warehouse ID: ")
+    query = "SELECT * FROM Warehouse WHERE Warehouse_ID =" + warehouse_id + ";"
+    try:
+        cursor.execute(query)
+    except mysql.connector.Error as error:
+        input(error + "\npress enter to continue\n")
+
+    while not cursor.fetchone():
+        os.system('clear')
+        warehouse_id = input("Input Valid Warehouse ID: ")
+        query = "SELECT * FROM Warehouse WHERE Warehouse_ID =" + warehouse_id + ";"
+        try:
+            cursor.execute(query)
+        except mysql.connector.Error as error:
+            input(error + "\npress enter to continue\n")
+    query = """
+    SELECT
+    *
+FROM Reorder AS s
+JOIN Reorder_Item AS si ON s.Reorder_ID = si.Reorder_ID
+JOIN Product AS p ON si.UPC_Code = p.UPC_Code
+WHERE s.Warehouse_ID = """ + warehouse_id + ";"
+    cursor.execute(query)
+    reorders = cursor.fetchall()
+    print("Warehouses: " + str(warehouse_id) + "'s reorder history")
+    for reorder in reorders:
+        print(" Reorder ID: " + str(reorder[0]) + " Status: " + str(reorder[1]) + " Vendor ID: " + str(
+            reorder[3]) + " Product: (" + str(reorder[7]) + ") " + reorder[8] + " Quantity: " + str(reorder[4]))
+    input("Enter to Contiune")
+
+
+def WarehouseInventoryLevels():
+    # warehouse login
+    os.system('clear')
+    warehouse_id = input("Input Warehouse ID: ")
+    query = "SELECT * FROM Warehouse WHERE Warehouse_ID =" + warehouse_id + ";"
+    try:
+        cursor.execute(query)
+    except mysql.connector.Error as error:
+        input(error + "\npress enter to continue\n")
+
+    while not cursor.fetchone():
+        os.system('clear')
+        warehouse_id = input("Input Valid Warehouse ID: ")
+        query = "SELECT * FROM Warehouse WHERE Warehouse_ID =" + warehouse_id + ";"
+        try:
+            cursor.execute(query)
+        except mysql.connector.Error as error:
+            input(error + "\npress enter to continue\n")
+    query = "SELECT * FROM Warehouse_Inventory as i JOIN Product as p ON i.UPC_Code = p.UPC_Code where i.Warehouse_ID = " + \
+        warehouse_id + " ORDER BY i.Amount DESC"
+    cursor.execute(query)
+    inventory = cursor.fetchall()
+    print("Warehouses: " + str(warehouse_id) + "'s Inventory Level:")
+    for item in inventory:
+        print("Product: (" + str(item[4]) + ") " + item[5] + " Amount: " + str(
+            item[0]) + " Max Capacity: " + str(item[1]))
+    input("Enter to Contiune")
+
+
 def VendorMenu():
     os.system('clear')
     runMenu = True
     while (runMenu):
         first_selection = input("""Select Interface:\n
         1. Fufill Reorders/Create Shipments\n
-        2. Exit
+        2. View Shipment History\n
+        3. Exit
         """)
         try:
             fselection = int(first_selection)
@@ -145,13 +285,15 @@ def VendorMenu():
             except:
                 os.system('clear')
             continue
-        if (fselection < 1 or fselection > 2):
+        if (fselection < 1 or fselection > 3):
             input("Invalid input\n press enter to retry")
             continue
         match (fselection):
             case 1:
                 shipment()
             case 2:
+                ShipmentHistory()
+            case 3:
                 print("Exiting")
                 runMenu = False
                 os.system('clear')
@@ -159,6 +301,48 @@ def VendorMenu():
             case _:
                 input("Invalid input\n press enter to retry")
                 continue
+
+
+def ShipmentHistory():
+    # Vendor login
+    os.system('clear')
+    vendor_id = input("Input Vendor ID: ")
+    query = "SELECT * FROM Vendor WHERE Vendor_ID =" + vendor_id + ";"
+    try:
+        cursor.execute(query)
+    except mysql.connector.Error as error:
+        input(error + "\npress enter to continue\n")
+
+    while not cursor.fetchone():
+        os.system('clear')
+        vendor_id = input("Input Valid Vendor ID: ")
+        query = "SELECT * FROM Vendor WHERE Vendor_ID =" + vendor_id + ";"
+        try:
+            cursor.execute(query)
+        except mysql.connector.Error as error:
+            input(error + "\npress enter to continue\n")
+    query = """
+    SELECT
+    *
+FROM Shipment AS s
+JOIN Shipment_Item AS si ON s.Shipment_ID = si.Shipment_ID
+JOIN Product AS p ON si.UPC_Code = p.UPC_Code
+WHERE s.Vendor_ID = """ + vendor_id + " ORDER BY s.Shipment_Date DESC, s.Time_Hour DESC, s.Time_Minute DESC;"
+    cursor.execute(query)
+    shipments = cursor.fetchall()
+    print("Vendor: " + str(vendor_id) + "'s shipment history")
+    for shipment in shipments:
+        formatted_date = shipment[1].strftime("%B %d, %Y")
+        print(formatted_date + " " + str(shipment[2]) + ":" + str(shipment[3]) + " Shipment ID: " + str(shipment[0]) + " Status: " + str(
+            getShipmentStats(shipment[4])) + " Warehouse ID: " + str(shipment[5]) + " Product: (" + str(shipment[10]) + ") " + shipment[11] + " Quantity: " + str(shipment[7]))
+    input("Enter to Contiune")
+
+
+def getShipmentStats(intStatus):
+    if (intStatus == 0):
+        return "Completed"
+    else:
+        return "Shipped"
 
 
 def MarketMenu():
