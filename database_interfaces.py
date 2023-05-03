@@ -2502,10 +2502,34 @@ def addShipment(warehouse, vendor):
         query = "SELECT IFNULL(MAX(Shipment_ID), 0) + 1 FROM Shipment;"
         cursor.execute(query)
         Shipment_ID = int(cursor.fetchone()[0])
+        validDate = False
+        date_str = ""
+        while (not validDate):
+            try:
+                deliveryDay = input("Please enter the delivery day for Shipment: " +
+                                    str(Shipment_ID) + " to warehouse: " + str(warehouse) + " ")
+                deliveryMonth = input("Delivery Month: ")
+                deliveryYear = input("Delivery Year: ")
+                deliveryHour = input("Delivery Hour: ")
+                deliveryMinute = input("Delivery Minute: ")
+                date = datetime.datetime(int(deliveryYear), int(deliveryMonth), int(
+                    deliveryDay), hour=int(deliveryHour), minute=int(deliveryMinute))
+                dateOnly = datetime.date(int(deliveryYear), int(
+                    deliveryMonth), int(deliveryDay))
+                date_str = dateOnly.strftime('%Y-%m-%d')
+                if (date < now):
+                    print(
+                        "Date and time is in the past, please enter a valid date and time")
+                    continue
+                else:
+                    validDate = True
+            except:
+                print("Invalid entry please try again")
+                continue
         query = "INSERT INTO Shipment (Shipment_ID, Vendor_ID, Warehouse_ID, Shipment_Date, Time_Hour, Time_Minute, Shipment_Status) VALUES (" +\
             str(Shipment_ID)+"," + str(vendor) + \
-            "," + str(warehouse) + ", NOW() ," + str(current_hour) + "," +\
-            str(current_minute) + ", \'1\'" + "); "
+            "," + str(warehouse) + ", \'"+str(date_str)+"\', " + str(deliveryHour) + ", " +\
+            str(deliveryMinute) + ", \'1\'" + "); "
         cursor.execute(query)
         return Shipment_ID
     except mysql.connector.Error as error:
@@ -2572,9 +2596,8 @@ def updateInventory():
             restockItems = cursor.fetchall()
             for item in restockItems:
                 query = "UPDATE Inventory SET Amount = Amount +" + \
-                    str(item[0]) + " WHERE store_id = " + \
-                    str(restock[5]) + " AND UPC_Code = " + \
-                    str(item[2]) + ";"
+                    str(item[0]) + " WHERE store_id = " + str(restock[5]
+                                                              ) + " AND UPC_Code = " + str(item[2]) + ";"
                 cursor.execute(query)
             query = "UPDATE Restock SET Restock_Status = 'Completed' WHERE Stocking_ID = " + \
                 str(restock[0]) + "; "
@@ -2609,30 +2632,29 @@ def updateWarehouseInventory():
     allShipments = cursor.fetchall()
     now = datetime.datetime.now()
     print("Shipments arrived since last check: ")
-    for shipment in allShipments:
-        shipmentHour = shipment[2]
-        shipmentMinute = shipment[3]
-        time_obj = datetime.time(shipmentHour, shipmentMinute)
-        date_obj = datetime.datetime.combine(shipment[1], time_obj)
-        if (now > date_obj):
-            print("ID: " + str(shipment[0]) + " Warehouse: " +
-                  str(shipment[6]) + " Vendor: " + str(shipment[5]))
     if (len(allShipments) != 0):
         print("Updating warehouse inventories...")
         for shipment in allShipments:
-            query = "SELECT * FROM Shipment_Item WHERE Shipment_ID = " + \
-                str(shipment[0]) + "; "
-            cursor.execute(query)
-            shipmentItems = cursor.fetchall()
-            for item in shipmentItems:
-                query = "UPDATE Warehouse_Inventory SET Amount = Amount +" + \
-                    str(item[0]) + " WHERE warehouse_id = " + \
-                    str(shipment[6]) + " AND UPC_Code = " + \
-                    str(item[1]) + ";"
+            shipmentHour = shipment[2]
+            shipmentMinute = shipment[3]
+            time_obj = datetime.time(shipmentHour, shipmentMinute)
+            date_obj = datetime.datetime.combine(shipment[1], time_obj)
+            if (now > date_obj):
+                print("ID: " + str(shipment[0]) + " Warehouse: " +
+                      str(shipment[6]) + " Vendor: " + str(shipment[5]))
+                query = "SELECT * FROM Shipment_Item WHERE Shipment_ID = " + \
+                    str(shipment[0]) + "; "
                 cursor.execute(query)
-            query = "UPDATE Shipment SET Shipment_Status = 0 WHERE Shipment_ID = " + \
-                str(shipment[0]) + "; "
-            cursor.execute(query)
+                shipmentItems = cursor.fetchall()
+                for item in shipmentItems:
+                    query = "UPDATE Warehouse_Inventory SET Amount = Amount +" + \
+                        str(item[0]) + " WHERE warehouse_id = " + \
+                        str(shipment[6]) + " AND UPC_Code = " + \
+                        str(item[1]) + ";"
+                    cursor.execute(query)
+                query = "UPDATE Shipment SET Shipment_Status = 0 WHERE Shipment_ID = " + \
+                    str(shipment[0]) + "; "
+                cursor.execute(query)
         print("Updated\n")
     cnx.commit()
     input("")
