@@ -17,7 +17,8 @@ def customerMenu():
     while (runMenu):
         first_selection = input("""Select Interface:\n
         1. Online Purchase\n
-        2. Exit
+        2. Purchase History\n
+        3. Exit
         """)
         try:
             fselection = int(first_selection)
@@ -28,13 +29,15 @@ def customerMenu():
             except:
                 os.system('clear')
             customerMenu()
-        if (fselection < 1 or fselection > 2):
+        if (fselection < 1 or fselection > 3):
             input("Invalid input\n press enter to retry")
             customerMenu()
         match (fselection):
             case 1:
                 webOrder()
             case 2:
+                purchaseHistory()
+            case 3:
                 print("Exiting")
                 runMenu = False
                 os.system('clear')
@@ -1408,6 +1411,46 @@ def updateWarehouseInventory():
     cnx.commit()
     input("")
     os.system('clear')
+
+
+def purchaseHistory():
+    os.system('clear')
+
+    login = input("input ur id to login or -1 to register: \n")
+    # check if customer exists in database
+    query = "SELECT * FROM Customer WHERE Customer_ID = " + login
+    try:
+        cursor.execute(query)
+    except mysql.connector.Error as error:
+        input(error + "\npress enter to continue\n")
+
+    if not cursor.fetchone():
+        # no id
+        login = register()
+    query = """
+    SELECT
+c.customer_id,
+c.first_name,
+c.last_name,
+	    	s.date,
+	    	si.UPC_Code,
+	    	p.name,
+        	si.Local_Price,
+	    	si.Quanity
+FROM
+	Customer c, Sale s, Sale_Item si, Product p
+WHERE
+	c.customer_id = s.customer_id AND
+	s.sale_id = si.sale_id AND
+	si.UPC_Code = p.UPC_Code AND
+	c.customer_id = """ + login + " ORDER BY s.date DESC, si.UPC_Code "
+    cursor.execute(query)
+    purchases = cursor.fetchall()
+    print(purchases[0][1] + " " + purchases[0][2] + "'s Purchase History: ")
+    for purchase in purchases:
+        formatted_date = purchase[3].strftime("%B %d, %Y")
+        print(formatted_date + " Product: " + purchase[5] + " Quantity: " + str(
+            purchase[7]) + " Cost Per Item: $" + str(purchase[6]) + " Total Cost: $" + str(purchase[6]*purchase[7]))
 
 # checkout - update inventory and customer frequent buys
 
