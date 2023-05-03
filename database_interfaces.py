@@ -11,24 +11,197 @@ cnx = mysql.connector.connect(user='com303ccarter2', password='cc3456cc',
 cursor = cnx.cursor()
 
 
+def customerMenu():
+    os.system('clear')
+    runMenu = True
+    while (runMenu):
+        first_selection = input("""Select Interface:\n
+        1. Online Purchase\n
+        2. Exit
+        """)
+        try:
+            fselection = int(first_selection)
+        except:
+            input("Invalid input\n press enter to retry")
+            try:
+                os.system('clear')
+            except:
+                os.system('clear')
+            customerMenu()
+        if (fselection < 1 or fselection > 2):
+            input("Invalid input\n press enter to retry")
+            customerMenu()
+        match (fselection):
+            case 1:
+                webOrder()
+            case 2:
+                print("Exiting")
+                runMenu = False
+                os.system('clear')
+                break
+            case _:
+                input("Invalid input\n press enter to retry")
+                customerMenu()
+
+
+def StoreMenu():
+    os.system('clear')
+    runMenu = True
+    while (runMenu):
+        first_selection = input("""Select Interface:\n
+        1. Update Inventory\n
+        2. Restock\n
+        3. Stock\n
+        4. Exit
+        """)
+        try:
+            fselection = int(first_selection)
+        except:
+            input("Invalid input\n press enter to retry")
+            try:
+                os.system('clear')
+            except:
+                os.system('clear')
+            StoreMenu()
+        if (fselection < 1 or fselection > 4):
+            input("Invalid input\n press enter to retry")
+            StoreMenu()
+        match (fselection):
+            case 1:
+                updateInventory()
+            case 2:
+                restock()
+            case 3:
+                stock()
+            case 4:
+                print("Exiting")
+                runMenu = False
+                os.system('clear')
+                break
+            case _:
+                input("Invalid input\n press enter to retry")
+                StoreMenu()
+
+
+def WarehouseMenu():
+    os.system('clear')
+    runMenu = True
+    while (runMenu):
+        first_selection = input("""Select Interface:\n
+        1. Update Warehouse Inventory\n
+        2. Reorder\n
+        3. Order\n
+        4. Exit
+        """)
+        try:
+            fselection = int(first_selection)
+        except:
+            input("Invalid input\n press enter to retry")
+            try:
+                os.system('clear')
+            except:
+                os.system('clear')
+            WarehouseMenu()
+        if (fselection < 1 or fselection > 4):
+            input("Invalid input\n press enter to retry")
+            WarehouseMenu()
+        match (fselection):
+            case 1:
+                updateWarehouseInventory()
+            case 2:
+                reorder()
+            case 3:
+                order()
+            case 4:
+                print("Exiting")
+                runMenu = False
+                os.system('clear')
+                break
+            case _:
+                input("Invalid input\n press enter to retry")
+                WarehouseMenu()
+
+
+def VendorMenu():
+    os.system('clear')
+    runMenu = True
+    while (runMenu):
+        first_selection = input("""Select Interface:\n
+        1. Fufill Reorders/Create Shipments\n
+        2. Exit
+        """)
+        try:
+            fselection = int(first_selection)
+        except:
+            input("Invalid input\n press enter to retry")
+            try:
+                os.system('clear')
+            except:
+                os.system('clear')
+            VendorMenu()
+        if (fselection < 1 or fselection > 2):
+            input("Invalid input\n press enter to retry")
+            VendorMenu()
+        match (fselection):
+            case 1:
+                shipment()
+            case 2:
+                print("Exiting")
+                runMenu = False
+                os.system('clear')
+                break
+            case _:
+                input("Invalid input\n press enter to retry")
+                VendorMenu()
+
+
+def MarketMenu():
+    os.system('clear')
+    runMenu = True
+    while (runMenu):
+        first_selection = input("""Select Interface:\n
+        1. Run OLAP Queries\n
+        2. Exit
+        """)
+        try:
+            fselection = int(first_selection)
+        except:
+            input("Invalid input\n press enter to retry")
+            try:
+                os.system('clear')
+            except:
+                os.system('clear')
+            MarketMenu()
+        if (fselection < 1 or fselection > 2):
+            input("Invalid input\n press enter to retry")
+            MarketMenu()
+        match (fselection):
+            case 1:
+                OLAP()
+            case 2:
+                print("Exiting")
+                runMenu = False
+                os.system('clear')
+                break
+            case _:
+                input("Invalid input\n press enter to retry")
+                MarketMenu()
+
+
 def runMainMenu():
     os.system('clear')
     runMenu = True
     while (runMenu):
-        rselection = input("""Select interface:
-                1. OLAP\n
-                2. Web Order\n
-                3. Reorder Warehouse\n
-                4. Restock Store\n
-                5. Vendor Shipment\n
-                6. Update Inventory\n
-                7. Update Warehouse Inventory\n
-                8. Checkout\n
-                9. Place an Order \n
-                10. Place a Stock \n
-                11: Exit\n""")
+        first_selection = input("""Select User:
+        1. Customer\n
+        2. Store\n
+        3. Warehouse\n
+        4. Vendor\n
+        5. Market-Researcher\n
+        6. Exit
+        """)
         try:
-            selection = int(rselection)
+            fselection = int(first_selection)
         except:
             input("Invalid input\n press enter to retry")
             try:
@@ -36,32 +209,21 @@ def runMainMenu():
             except:
                 os.system('clear')
             runMainMenu()
-        if (selection < 1 or selection > 11):
+        if (fselection < 1 or fselection > 6):
             input("Invalid input\n press enter to retry")
             runMainMenu()
-
-        match (selection):
+        match (fselection):
             case 1:
-                OLAP()
+                customerMenu()
             case 2:
-                webOrder()
+                StoreMenu()
             case 3:
-                reorder()
+                WarehouseMenu()
             case 4:
-                restock()
+                VendorMenu()
             case 5:
-                shipment()
+                MarketMenu()
             case 6:
-                updateInventory()
-            case 7:
-                updateWarehouseInventory()
-            case 8:
-                checkout()
-            case 9:
-                order()
-            case 10:
-                stock()
-            case 11:
                 print("Exiting")
                 runMenu = False
                 os.system('clear')
