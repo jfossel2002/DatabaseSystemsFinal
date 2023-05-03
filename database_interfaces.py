@@ -233,7 +233,7 @@ def runMainMenu():
                 print("Exiting")
                 runMenu = False
                 os.system('clear')
-                break
+                return (-1)
             case _:
                 input("Invalid input\n press enter to retry")
                 continue
@@ -390,6 +390,1038 @@ def OLAP():
     rselection = input("")
     os.system('clear')
 
+
+def webOrderMenu(avalibleProducts):
+    os.system('clear')
+    runMenu = True
+    while (runMenu):
+        first_selection = input("""Select Product Type:
+        1. Food\n
+        2. Clothing\n
+        3. Outdoor Gear\n
+        4. All\n
+        5. Exit
+        """)
+        try:
+            fselection = int(first_selection)
+        except:
+            input("Invalid input\n press enter to retry")
+            try:
+                os.system('clear')
+            except:
+                os.system('clear')
+            continue
+        if (fselection < 1 or fselection > 5):
+            input("Invalid input\n press enter to retry")
+            continue
+        match (fselection):
+            case 1:
+                return FoodOrderMenu(avalibleProducts, 0)
+            case 2:
+                return ClothingOrderMenu(avalibleProducts, 0)
+            case 3:
+                return OutdoorGearOrderMenu(avalibleProducts, 0)
+            case 4:
+                return allOrderMenu(avalibleProducts, 0)
+            case 5:
+                print("Exiting")
+                runMenu = False
+                os.system('clear')
+                break
+            case _:
+                input("Invalid input\n press enter to retry")
+                continue
+
+
+def allOrderMenu(avalibleProducts, currentIndex):
+    allProducts = []
+    index = currentIndex
+    for product in avalibleProducts:
+        query = """SELECT p.*, SUM(i.Amount) AS Total_Amount
+                    FROM Product AS p
+                    JOIN Inventory AS i ON p.UPC_Code = i.UPC_Code
+                    WHERE p.UPC_Code = """ + str(product[4]) + " GROUP BY p.UPC_Code;"
+        cursor.execute(query)
+        outdoors = cursor.fetchall()
+        if (len(outdoors) != 0):
+            query = """
+        SELECT DISTINCT p.name, SUM(i.Amount), p.UPC_Code, p.Price, p.UPC_Code, p.Brand_Name, p.Weight
+        FROM Inventory i
+        JOIN Product p ON i.UPC_Code = p.UPC_Code
+        JOIN Store st ON i.Store_ID = st.Store_ID
+        WHERE i.Amount > 0 AND  p.UPC_Code =""" + str(outdoors[0][0]) + " GROUP BY p.Name, p.UPC_Code, p.Price;"
+            cursor.execute(query)
+            avaliable_products = cursor.fetchall()
+            allProducts.append(avaliable_products[0])
+    if (len(allProducts) == 0):
+        print("No Products For Sale")
+        input("Hit Enter to Contiune")
+        return -1
+    else:
+        for products in allProducts:
+            query = "SELECT * FROM Food WHERE UPC_Code =" + \
+                str(products[2])+";"
+            cursor.execute(query)
+            if len(cursor.fetchall()) != 0:
+                FoodOrderMenu([products], index)
+                index += 1
+                continue
+            query = "SELECT * FROM Clothing WHERE UPC_Code =" + \
+                str(products[2])+";"
+            cursor.execute(query)
+            if len(cursor.fetchall()) != 0:
+                ClothingOrderMenu([products], index)
+                index += 1
+                continue
+            query = "SELECT * FROM Outdoor_Gear WHERE UPC_Code =" + \
+                str(products[2])+";"
+            cursor.execute(query)
+            if len(cursor.fetchall()) != 0:
+                allOutdoorGearHuntingMenu([products], index)
+                index += 1
+                continue
+            print(str(index) + ": " + products[0] + "\n\tAmount Avalible: " +
+                  str(int(products[1])) + "\n\tPrice: $" + str(products[3]) + "\n\tBrand: " + str(products[5]) + "\n\tWeight: " + str(products[6]))
+            index += 1
+        return allProducts
+
+
+def FoodOrderMenu(avalibleProducts, currentIndex):
+    allFoodProducts = []
+    index = currentIndex
+    for product in avalibleProducts:
+        query = """SELECT p.*, f.*, SUM(i.Amount) AS Total_Amount
+                    FROM Product AS p
+                    JOIN Food AS f ON p.UPC_Code = f.UPC_Code
+                    JOIN Inventory AS i ON p.UPC_Code = i.UPC_Code
+                    WHERE p.UPC_Code = """ + str(product[4]) + " GROUP BY p.UPC_Code;"
+        cursor.execute(query)
+        foods = cursor.fetchall()
+        if (len(foods) != 0):
+            formatted_date = foods[0][10].strftime("%B %d, %Y")
+            print(str(index) + ": " + foods[0][1] + "\n\tAmount Avalible: " + str(int(foods[0][13])) + "\n\tPrice: $" + str(foods[0][2]) + "\n\tBrand: " + foods[0][8] + "\n\tCalories: " + str(
+                foods[0][11]) + "\n\tExpiration Date: " + formatted_date + "\n")
+            query = """
+        SELECT DISTINCT p.name, SUM(i.Amount), p.UPC_Code, p.Price
+        FROM Inventory i
+        JOIN Product p ON i.UPC_Code = p.UPC_Code
+        JOIN Store st ON i.Store_ID = st.Store_ID
+        WHERE i.Amount > 0 AND  p.UPC_Code =""" + str(foods[0][0]) + " GROUP BY p.Name, p.UPC_Code, p.Price;"
+            cursor.execute(query)
+            avaliable_products = cursor.fetchall()
+            allFoodProducts.append(avaliable_products[0])
+    if (len(allFoodProducts) == 0):
+        print("No Food Products Avalible")
+        input("Press Enter to try Again")
+        return -1
+    return allFoodProducts
+
+
+def ClothingOrderMenu(avalibleProducts, currentIndex):
+    allClothingProducts = []
+    index = currentIndex
+    for product in avalibleProducts:
+        query = """SELECT p.*, c.*, SUM(i.Amount) AS Total_Amount
+                    FROM Product AS p
+                    JOIN Clothing AS c ON p.UPC_Code = c.UPC_Code
+                    JOIN Inventory AS i ON p.UPC_Code = i.UPC_Code
+                    WHERE p.UPC_Code = """ + str(product[4]) + " GROUP BY p.UPC_Code;"
+        cursor.execute(query)
+        clothes = cursor.fetchall()
+        if (len(clothes) != 0):
+            print(str(index) + ": " + clothes[0][1] + "\n\tAmount Avalible: " + str(int(clothes[0][13])) + "\n\tPrice: $" + str(clothes[0][2]) +
+                  "\n\tBrand: " + clothes[0][8] + "\n\tSize: " + clothes[0][10] + "\n\tColor: " + clothes[0][11])
+            index += 1
+            query = """
+        SELECT DISTINCT p.name, SUM(i.Amount), p.UPC_Code, p.Price
+        FROM Inventory i
+        JOIN Product p ON i.UPC_Code = p.UPC_Code
+        JOIN Store st ON i.Store_ID = st.Store_ID
+        WHERE i.Amount > 0 AND  p.UPC_Code =""" + str(clothes[0][0]) + " GROUP BY p.Name, p.UPC_Code, p.Price;"
+            cursor.execute(query)
+            avaliable_products = cursor.fetchall()
+            allClothingProducts.append(avaliable_products[0])
+    if (len(allClothingProducts) == 0):
+        print("No Food Products Avalible")
+        input("Press Enter to try Again")
+        return -1
+    return allClothingProducts
+
+
+def OutdoorGearOrderMenu(avalibleProducts, currentIndex):
+    os.system('clear')
+    runMenu = True
+    while (runMenu):
+        first_selection = input("""Select Outdoor Gear Product Type:
+        1. Hunting Equipment\n
+        2. Fishing Equipment\n
+        3. Camping Equipment\n
+        4. All\n
+        5. Exit
+        """)
+        try:
+            fselection = int(first_selection)
+        except:
+            input("Invalid input\n press enter to retry")
+            try:
+                os.system('clear')
+            except:
+                os.system('clear')
+            continue
+        if (fselection < 1 or fselection > 5):
+            input("Invalid input\n press enter to retry")
+            continue
+        match (fselection):
+            case 1:
+                return HuntingEquipmentOrderMenu(avalibleProducts, currentIndex)
+            case 2:
+                return FishingEquipmentOrderMenu(avalibleProducts, currentIndex)
+            case 3:
+                return CampingEquipmentOrderMenu(avalibleProducts, currentIndex)
+            case 4:
+                return allOutdoorGearHuntingMenu(avalibleProducts, currentIndex)
+                print("All Outdoor Products")
+            case 5:
+                print("Exiting")
+                runMenu = False
+                os.system('clear')
+                return (-1)
+            case _:
+                input("Invalid input\n press enter to retry")
+                continue
+
+
+def allOutdoorGearHuntingMenu(avalibleProducts, currentIndex):
+    allOutdoorGearProducts = []
+    index = currentIndex
+    for product in avalibleProducts:
+        query = """SELECT p.*, h.*, SUM(i.Amount) AS Total_Amount
+                    FROM Product AS p
+                    JOIN Outdoor_Gear AS h on p.UPC_Code = h.UPC_code
+                    JOIN Inventory AS i ON p.UPC_Code = i.UPC_Code
+                    WHERE p.UPC_Code = """ + str(product[4]) + " GROUP BY p.UPC_Code;"
+        cursor.execute(query)
+        outdoors = cursor.fetchall()
+        if (len(outdoors) != 0):
+            query = """
+        SELECT DISTINCT p.name, SUM(i.Amount), p.UPC_Code, p.Price, p.UPC_Code, p.Brand_Name, p.Weight
+        FROM Inventory i
+        JOIN Product p ON i.UPC_Code = p.UPC_Code
+        JOIN Store st ON i.Store_ID = st.Store_ID
+        WHERE i.Amount > 0 AND  p.UPC_Code =""" + str(outdoors[0][0]) + " GROUP BY p.Name, p.UPC_Code, p.Price;"
+            cursor.execute(query)
+            avaliable_products = cursor.fetchall()
+            allOutdoorGearProducts.append(avaliable_products[0])
+    if (len(allOutdoorGearProducts) == 0):
+        print("No Outdoor Gear Products")
+        input("Hit Enter to Contiune")
+        return -1
+    else:
+        for outs in allOutdoorGearProducts:
+            query = "SELECT * FROM Hunting_Equipment WHERE UPC_Code =" + \
+                str(outs[2])+";"
+            cursor.execute(query)
+            if len(cursor.fetchall()) != 0:
+                allHuntingEquipmentOrderMenu([outs], index)
+                index += 1
+                continue
+            query = "SELECT * FROM Fishing_Equipment WHERE UPC_Code =" + \
+                str(outs[2])+";"
+            cursor.execute(query)
+            if len(cursor.fetchall()) != 0:
+                allFishingOrderMenu([outs], index)
+                index += 1
+                continue
+            query = "SELECT * FROM Camping_Equipment WHERE UPC_Code =" + \
+                str(outs[2])+";"
+            cursor.execute(query)
+            if len(cursor.fetchall()) != 0:
+                allCampingOrderMenu([outs], index)
+                index += 1
+                continue
+            print(str(index) + ": " + outs[0] + "\n\tAmount Avalible: " +
+                  str(int(outs[1])) + "\n\tPrice: $" + str(outs[3]) + "\n\tBrand: " + str(outs[5]) + "\n\tWeight: " + str(outs[6]))
+            index += 1
+        return allOutdoorGearProducts
+
+
+def HuntingEquipmentOrderMenu(avalibleProducts, currentIndex):
+    os.system('clear')
+    runMenu = True
+    while (runMenu):
+        first_selection = input("""Select Hunting Equipment Product Type:
+        1. Firearm\n
+        2. Archery\n
+        3. All\n
+        4. Exit
+        """)
+        try:
+            fselection = int(first_selection)
+        except:
+            input("Invalid input\n press enter to retry")
+            try:
+                os.system('clear')
+            except:
+                os.system('clear')
+            continue
+        if (fselection < 1 or fselection > 4):
+            input("Invalid input\n press enter to retry")
+            continue
+        match (fselection):
+            case 1:
+                return FirearmOrderMenu(avalibleProducts, currentIndex)
+            case 2:
+                return ArcheryOrderMenu(avalibleProducts, currentIndex)
+            case 3:
+                return allHuntingEquipmentOrderMenu(avalibleProducts, currentIndex)
+            case 4:
+                print("Exiting")
+                runMenu = False
+                os.system('clear')
+                return (-1)
+            case _:
+                input("Invalid input\n press enter to retry")
+                continue
+
+
+def allHuntingEquipmentOrderMenu(avalibleProducts, currentIndex):
+    allHuntingProducts = []
+    index = currentIndex
+    for product in avalibleProducts:
+        query = """SELECT p.*, h.*, SUM(i.Amount) AS Total_Amount
+                    FROM Product AS p
+                    JOIN Hunting_Equipment AS h on p.UPC_Code = h.UPC_code
+                    JOIN Inventory AS i ON p.UPC_Code = i.UPC_Code
+                    WHERE p.UPC_Code = """ + str(product[4]) + " GROUP BY p.UPC_Code;"
+        cursor.execute(query)
+        huntings = cursor.fetchall()
+        if (len(huntings) != 0):
+            query = """
+        SELECT DISTINCT p.name, SUM(i.Amount), p.UPC_Code, p.Price, p.UPC_Code, p.Brand_Name, p.Weight
+        FROM Inventory i
+        JOIN Product p ON i.UPC_Code = p.UPC_Code
+        JOIN Store st ON i.Store_ID = st.Store_ID
+        WHERE i.Amount > 0 AND  p.UPC_Code =""" + str(huntings[0][0]) + " GROUP BY p.Name, p.UPC_Code, p.Price;"
+            cursor.execute(query)
+            avaliable_products = cursor.fetchall()
+            allHuntingProducts.append(avaliable_products[0])
+    if (len(allHuntingProducts) == 0):
+        print("No Hunting Products")
+        input("Hit Enter to Contiune")
+        return -1
+    else:
+        for hunt in allHuntingProducts:
+            query = "SELECT * FROM Firearm WHERE UPC_Code =" + \
+                str(hunt[2])+";"
+            cursor.execute(query)
+            if len(cursor.fetchall()) != 0:
+                allFireArmOrderMenu([hunt], index)
+                index += 1
+                continue
+            query = "SELECT * FROM Archery WHERE UPC_Code =" + \
+                str(hunt[2])+";"
+            cursor.execute(query)
+            if len(cursor.fetchall()) != 0:
+                AllArcheryOrderMenu([hunt], index)
+                index += 1
+                continue
+            print(str(index) + ": " + hunt[0] + "\n\tAmount Avalible: " +
+                  str(int(hunt[1])) + "\n\tPrice: $" + str(hunt[3]) + "\n\tBrand: " + str(hunt[5]) + "\n\tWeight: " + str(hunt[6]))
+            index += 1
+        return allHuntingProducts
+
+
+def FirearmOrderMenu(avalibleProducts, currentIndex):
+    os.system('clear')
+    runMenu = True
+    while (runMenu):
+        first_selection = input("""Select Firearm Product Type:
+        1. Rifle\n
+        2. Shotgun\n
+        3. Pistol\n
+        4. All\n
+        5. Exit
+        """)
+        try:
+            fselection = int(first_selection)
+        except:
+            input("Invalid input\n press enter to retry")
+            try:
+                os.system('clear')
+            except:
+                os.system('clear')
+            continue
+        if (fselection < 1 or fselection > 5):
+            input("Invalid input\n press enter to retry")
+            continue
+        match (fselection):
+            case 1:
+                return RifleOrderMenu(avalibleProducts, currentIndex)
+            case 2:
+                return ShotgunOrderMenu(avalibleProducts, currentIndex)
+            case 3:
+                return PistolOrderMenu(avalibleProducts, currentIndex)
+            case 4:
+                return allFireArmOrderMenu(avalibleProducts, currentIndex)
+            case 5:
+                print("Exiting")
+                runMenu = False
+                os.system('clear')
+                return (-1)
+            case _:
+                input("Invalid input\n press enter to retry")
+                continue
+
+
+def allFireArmOrderMenu(avalibleProducts, currentIndex):
+    allFirearmProducts = []
+    index = currentIndex
+    for product in avalibleProducts:
+        query = """SELECT p.*, h.*, f.*, SUM(i.Amount) AS Total_Amount
+                    FROM Product AS p
+                    JOIN Firearm AS f on p.UPC_Code = f.UPC_Code
+                    JOIN Hunting_Equipment AS h on p.UPC_Code = h.UPC_code
+                    JOIN Inventory AS i ON p.UPC_Code = i.UPC_Code
+                    WHERE p.UPC_Code = """ + str(product[4]) + " GROUP BY p.UPC_Code;"
+        cursor.execute(query)
+        firearms = cursor.fetchall()
+        if (len(firearms) != 0):
+            query = """
+        SELECT DISTINCT p.name, SUM(i.Amount), p.UPC_Code, p.Price, p.UPC_Code, p.Brand_Name, p.Weight
+        FROM Inventory i
+        JOIN Product p ON i.UPC_Code = p.UPC_Code
+        JOIN Store st ON i.Store_ID = st.Store_ID
+        WHERE i.Amount > 0 AND  p.UPC_Code =""" + str(firearms[0][0]) + " GROUP BY p.Name, p.UPC_Code, p.Price;"
+            cursor.execute(query)
+            avaliable_products = cursor.fetchall()
+            allFirearmProducts.append(avaliable_products[0])
+    if (len(allFirearmProducts) == 0):
+        print("No Firearm Products")
+        input("Hit Enter to Contiune")
+        return -1
+    else:
+        for firearm in allFirearmProducts:
+            query = "SELECT * FROM Rifle WHERE UPC_Code =" + \
+                str(firearm[2])+";"
+            cursor.execute(query)
+            if len(cursor.fetchall()) != 0:
+                RifleOrderMenu([firearm], index)
+                index += 1
+                continue
+            query = "SELECT * FROM Shotgun WHERE UPC_Code =" + \
+                str(firearm[2])+";"
+            cursor.execute(query)
+            if len(cursor.fetchall()) != 0:
+                ShotgunOrderMenu([firearm], index)
+                index += 1
+                continue
+            query = "SELECT * FROM Pistol WHERE UPC_Code =" + \
+                str(firearm[2])+";"
+            cursor.execute(query)
+            if len(cursor.fetchall()) != 0:
+                PistolOrderMenu([firearm], index)
+                index += 1
+                continue
+            print(str(index) + ": " + firearm[0] + "\n\tAmount Avalible: " +
+                  str(int(firearm[1])) + "\n\tPrice: $" + str(firearm[3]) + "\n\tBrand: " + str(firearm[5]) + "\n\tWeight: " + str(firearm[6]))
+            index += 1
+        return allFirearmProducts
+
+
+def RifleOrderMenu(avalibleProducts, currentIndex):
+    allRifleProducts = []
+    index = currentIndex
+    for product in avalibleProducts:
+        query = """SELECT p.*, h.*, f.*, r.*, SUM(i.Amount) AS Total_Amount
+                    FROM Product AS p
+                    JOIN Rifle AS r ON p.UPC_Code = r.UPC_Code
+                    JOIN Firearm AS f on p.UPC_Code = f.UPC_Code
+                    JOIN Hunting_Equipment AS h on p.UPC_Code = h.UPC_code
+                    JOIN Inventory AS i ON p.UPC_Code = i.UPC_Code
+                    WHERE p.UPC_Code = """ + str(product[4]) + " GROUP BY p.UPC_Code;"
+        cursor.execute(query)
+        rifles = cursor.fetchall()
+        if (len(rifles) != 0):
+            print(str(index) + ": " + rifles[0][1] + "\n\tAmount Avalible: " + str(int(rifles[0][20])) + "\n\tPrice: $" + str(rifles[0][2]) + "\n\tBrand: " + rifles[0][8] + "\n\tHunting Type: " + rifles[0][10] + "\n\tColor: " +
+                  rifles[0][13] + "\n\tCapacity: " + str(rifles[0][12]) + "\n\tCaliber: " + rifles[0][16] + "\n\tAction Type: " + rifles[0][18] + "\n\tBarrel Length: " + str(rifles[0][14]) + "\n\tStock Length: " + rifles[0][17])
+            index += 1
+            query = """
+        SELECT DISTINCT p.name, SUM(i.Amount), p.UPC_Code, p.Price
+        FROM Inventory i
+        JOIN Product p ON i.UPC_Code = p.UPC_Code
+        JOIN Store st ON i.Store_ID = st.Store_ID
+        WHERE i.Amount > 0 AND  p.UPC_Code =""" + str(rifles[0][0]) + " GROUP BY p.Name, p.UPC_Code, p.Price;"
+            cursor.execute(query)
+            avaliable_products = cursor.fetchall()
+            allRifleProducts.append(avaliable_products[0])
+    if (len(allRifleProducts) == 0):
+        print("No Rifle Products Avalible")
+        input("Press Enter to try Again")
+        return -1
+    return allRifleProducts
+
+
+def ShotgunOrderMenu(avalibleProducts, currentIndex):
+    allShotgunProducts = []
+    index = currentIndex
+    for product in avalibleProducts:
+        query = """SELECT p.*, h.*, f.*, s.*, SUM(i.Amount) AS Total_Amount
+                    FROM Product AS p
+                    JOIN Shotgun AS s ON p.UPC_Code = s.UPC_Code
+                    JOIN Firearm AS f on p.UPC_Code = f.UPC_Code
+                    JOIN Hunting_Equipment AS h on p.UPC_Code = h.UPC_code
+                    JOIN Inventory AS i ON p.UPC_Code = i.UPC_Code
+                    WHERE p.UPC_Code = """ + str(product[4]) + " GROUP BY p.UPC_Code;"
+        cursor.execute(query)
+        shotguns = cursor.fetchall()
+        if (len(shotguns) != 0):
+            print(str(index) + ": " + shotguns[0][1] + "\n\tAmount Avalible: " + str(int(shotguns[0][19])) + "\n\tPrice: $" + str(shotguns[0][2]) + "\n\tBrand: " + shotguns[0][8] + "\n\tHunting Type: " + shotguns[0][10] + "\n\tColor: " +
+                  shotguns[0][13] + "\n\tCapacity: " + str(shotguns[0][12]) + "\n\tGauge: " + shotguns[0][16] + "\n\tBarrel Length: " + str(shotguns[0][14]) + "\n\tChoke: " + shotguns[0][17])
+            index += 1
+            query = """
+        SELECT DISTINCT p.name, SUM(i.Amount), p.UPC_Code, p.Price
+        FROM Inventory i
+        JOIN Product p ON i.UPC_Code = p.UPC_Code
+        JOIN Store st ON i.Store_ID = st.Store_ID
+        WHERE i.Amount > 0 AND  p.UPC_Code =""" + str(shotguns[0][0]) + " GROUP BY p.Name, p.UPC_Code, p.Price;"
+            cursor.execute(query)
+            avaliable_products = cursor.fetchall()
+            allShotgunProducts.append(avaliable_products[0])
+    if (len(allShotgunProducts) == 0):
+        print("No Shotguns Products Avalible")
+        input("Press Enter to try Again")
+        return -1
+    return allShotgunProducts
+
+
+def PistolOrderMenu(avalibleProducts, currentIndex):
+    allPistolProducts = []
+    index = currentIndex
+    for product in avalibleProducts:
+        query = """SELECT p.*, h.*, f.*, s.*, SUM(i.Amount) AS Total_Amount
+                    FROM Product AS p
+                    JOIN Pistol AS s ON p.UPC_Code = s.UPC_Code
+                    JOIN Firearm AS f on p.UPC_Code = f.UPC_Code
+                    JOIN Hunting_Equipment AS h on p.UPC_Code = h.UPC_code
+                    JOIN Inventory AS i ON p.UPC_Code = i.UPC_Code
+                    WHERE p.UPC_Code = """ + str(product[4]) + " GROUP BY p.UPC_Code;"
+        cursor.execute(query)
+        pistols = cursor.fetchall()
+        if (len(pistols) != 0):
+            print(str(index) + ": " + pistols[0][1] + "\n\tAmount Avalible: " + str(int(pistols[0][19])) + "\n\tPrice: $" + str(pistols[0][2]) + "\n\tBrand: " + pistols[0][8] + "\n\tHunting Type: " + pistols[0][10] + "\n\tColor: " +
+                  pistols[0][13] + "\n\tCapacity: " + str(pistols[0][12]) + "\n\tCaliber: " + pistols[0][16] + "\n\tBarrel Length: " + str(pistols[0][14]) + "\n\tConcealable: " + pistols[0][17])
+            index += 1
+            query = """
+        SELECT DISTINCT p.name, SUM(i.Amount), p.UPC_Code, p.Price
+        FROM Inventory i
+        JOIN Product p ON i.UPC_Code = p.UPC_Code
+        JOIN Store st ON i.Store_ID = st.Store_ID
+        WHERE i.Amount > 0 AND  p.UPC_Code =""" + str(pistols[0][0]) + " GROUP BY p.Name, p.UPC_Code, p.Price;"
+            cursor.execute(query)
+            avaliable_products = cursor.fetchall()
+            allPistolProducts.append(avaliable_products[0])
+    if (len(allPistolProducts) == 0):
+        print("No Pistol Products Avalible")
+        input("Press Enter to try Again")
+        return -1
+    return allPistolProducts
+
+
+def ArcheryOrderMenu(avalibleProducts, currentIndex):
+    os.system('clear')
+    runMenu = True
+    while (runMenu):
+        first_selection = input("""Select Archery Product Type:
+        1. Bow\n
+        2. Arrow\n
+        3. All\n
+        4. Exit
+        """)
+        try:
+            fselection = int(first_selection)
+        except:
+            input("Invalid input\n press enter to retry")
+            try:
+                os.system('clear')
+            except:
+                os.system('clear')
+            continue
+        if (fselection < 1 or fselection > 4):
+            input("Invalid input\n press enter to retry")
+            continue
+        match (fselection):
+            case 1:
+                return BowOrderMenu(avalibleProducts, currentIndex)
+            case 2:
+                return ArrowOrderMenu(avalibleProducts, currentIndex)
+            case 3:
+                return AllArcheryOrderMenu(avalibleProducts, currentIndex)
+            case 4:
+                print("Exiting")
+                runMenu = False
+                os.system('clear')
+                return (-1)
+            case _:
+                input("Invalid input\n press enter to retry")
+                continue
+
+
+def AllArcheryOrderMenu(avalibleProducts, currentIndex):
+    print("Menu")
+    allArcheryProducts = []
+    index = currentIndex
+    for product in avalibleProducts:
+        query = """SELECT p.*, h.*, f.*, SUM(i.Amount) AS Total_Amount
+                    FROM Product AS p
+                    JOIN Archery AS f on p.UPC_Code = f.UPC_Code
+                    JOIN Hunting_Equipment AS h on p.UPC_Code = h.UPC_code
+                    JOIN Inventory AS i ON p.UPC_Code = i.UPC_Code
+                    WHERE p.UPC_Code = """ + str(product[4]) + " GROUP BY p.UPC_Code;"
+        cursor.execute(query)
+        archerys = cursor.fetchall()
+        if (len(archerys) != 0):
+            query = """
+        SELECT DISTINCT p.name, SUM(i.Amount), p.UPC_Code, p.Price, p.UPC_Code, p.Brand_Name, p.Weight
+        FROM Inventory i
+        JOIN Product p ON i.UPC_Code = p.UPC_Code
+        JOIN Store st ON i.Store_ID = st.Store_ID
+        WHERE i.Amount > 0 AND  p.UPC_Code =""" + str(archerys[0][0]) + " GROUP BY p.Name, p.UPC_Code, p.Price;"
+            cursor.execute(query)
+            avaliable_products = cursor.fetchall()
+            allArcheryProducts.append(avaliable_products[0])
+    if (len(allArcheryProducts) == 0):
+        print("No Archery Products")
+        input("Hit Enter to Contiune")
+        return -1
+    else:
+        for archery in allArcheryProducts:
+            query = "SELECT * FROM Bows WHERE UPC_Code =" + str(archery[2])+";"
+            cursor.execute(query)
+            if len(cursor.fetchall()) != 0:
+                BowOrderMenu([archery], index)
+                index += 1
+                continue
+            query = "SELECT * FROM Arrows WHERE UPC_Code =" + \
+                str(archery[2])+";"
+            cursor.execute(query)
+            if len(cursor.fetchall()) != 0:
+                ArrowOrderMenu([archery], index)
+                index += 1
+                continue
+            print(str(index) + ": " + archery[0] + "\n\tAmount Avalible: " +
+                  str(int(archery[1])) + "\n\tPrice: $" + str(archery[3]) + "\n\tBrand: " + str(archery[5]) + "\n\tWeight: " + str(archery[6]))
+            index += 1
+        return allArcheryProducts
+
+
+def BowOrderMenu(avalibleProducts, currentIndex):
+    print("All Bows")
+    allBowsProducts = []
+    index = currentIndex
+    for product in avalibleProducts:
+        query = """SELECT p.*, h.*, f.*, s.*, SUM(i.Amount) AS Total_Amount
+                    FROM Product AS p
+                    JOIN Bows AS s ON p.UPC_Code = s.UPC_Code
+                    JOIN Archery AS f on p.UPC_Code = f.UPC_Code
+                    JOIN Hunting_Equipment AS h on p.UPC_Code = h.UPC_code
+                    JOIN Inventory AS i ON p.UPC_Code = i.UPC_Code
+                    WHERE p.UPC_Code = """ + str(product[4]) + " GROUP BY p.UPC_Code;"
+        cursor.execute(query)
+        bows = cursor.fetchall()
+        if (len(bows) != 0):
+            print(str(index) + ": " + bows[0][1] + "\n\tAmount Avalible: " + str(int(bows[0][20])) + "\n\tPrice: $" + str(bows[0][2]) + "\n\tBrand: " + bows[0][8] + "\n\tHunting Type: " + bows[0][10] +
+                  "\n\tArchery Type: " + str(bows[0][12]) + "\n\Bow Type: " + bows[0][14] + "\n\Draw Weight: " + str(bows[0][15]) + "\n\Let Off: " + str(bows[0][16]))
+            index += 1
+            query = """
+        SELECT DISTINCT p.name, SUM(i.Amount), p.UPC_Code, p.Price
+        FROM Inventory i
+        JOIN Product p ON i.UPC_Code = p.UPC_Code
+        JOIN Store st ON i.Store_ID = st.Store_ID
+        WHERE i.Amount > 0 AND  p.UPC_Code =""" + str(bows[0][0]) + " GROUP BY p.Name, p.UPC_Code, p.Price;"
+            cursor.execute(query)
+            avaliable_products = cursor.fetchall()
+            allBowsProducts.append(avaliable_products[0])
+    if (len(allBowsProducts) == 0):
+        print("No Bow Products Avalible")
+        input("Press Enter to try Again")
+        return -1
+    return allBowsProducts
+
+
+def ArrowOrderMenu(avalibleProducts, currentIndex):
+    allArrowProducts = []
+    index = currentIndex
+    for product in avalibleProducts:
+        query = """SELECT p.*, h.*, f.*, s.*, SUM(i.Amount) AS Total_Amount
+                    FROM Product AS p
+                    JOIN Arrows AS s ON p.UPC_Code = s.UPC_Code
+                    JOIN Archery AS f on p.UPC_Code = f.UPC_Code
+                    JOIN Hunting_Equipment AS h on p.UPC_Code = h.UPC_code
+                    JOIN Inventory AS i ON p.UPC_Code = i.UPC_Code
+                    WHERE p.UPC_Code = """ + str(product[4]) + " GROUP BY p.UPC_Code;"
+        cursor.execute(query)
+        arrows = cursor.fetchall()
+        if (len(arrows) != 0):
+            print(str(index) + ": " + arrows[0][1] + "\n\tAmount Avalible: " + str(int(arrows[0][18])) + "\n\tPrice: $" + str(arrows[0][2]) + "\n\tBrand: " + arrows[0][8] + "\n\tHunting Type: " + arrows[0][10] +
+                  "\n\tArchery Type: " + str(arrows[0][12]) + "\n\Length: " + str(arrows[0][14]) + "\n\Tip Grain: " + str(arrows[0][15]) + "\n\Weight: " + str(arrows[0][16]))
+            index += 1
+            query = """
+        SELECT DISTINCT p.name, SUM(i.Amount), p.UPC_Code, p.Price
+        FROM Inventory i
+        JOIN Product p ON i.UPC_Code = p.UPC_Code
+        JOIN Store st ON i.Store_ID = st.Store_ID
+        WHERE i.Amount > 0 AND  p.UPC_Code =""" + str(arrows[0][0]) + " GROUP BY p.Name, p.UPC_Code, p.Price;"
+            cursor.execute(query)
+            avaliable_products = cursor.fetchall()
+            allArrowProducts.append(avaliable_products[0])
+    if (len(allArrowProducts) == 0):
+        print("No Arrow Products Avalible")
+        input("Press Enter to try Again")
+        return -1
+    return allArrowProducts
+
+
+def FishingEquipmentOrderMenu(avalibleProducts, currentIndex):
+    os.system('clear')
+    runMenu = True
+    while (runMenu):
+        first_selection = input("""Select Fishing Equipment Product Type:
+        1. Rods\n
+        2. Reels\n
+        3. Bait and Lures\n
+        4. All\n
+        5. Exit
+        """)
+        try:
+            fselection = int(first_selection)
+        except:
+            input("Invalid input\n press enter to retry")
+            try:
+                os.system('clear')
+            except:
+                os.system('clear')
+            continue
+        if (fselection < 1 or fselection > 5):
+            input("Invalid input\n press enter to retry")
+            continue
+        match (fselection):
+            case 1:
+                return RodsOrderMenu(avalibleProducts, currentIndex)
+            case 2:
+                return ReelsOrderMenu(avalibleProducts, currentIndex)
+            case 3:
+                return BaitAndLuresOrderMenu(avalibleProducts, currentIndex)
+            case 4:
+                return allFishingOrderMenu(avalibleProducts, currentIndex)
+            case 5:
+                print("Exiting")
+                runMenu = False
+                os.system('clear')
+                break
+            case _:
+                input("Invalid input\n press enter to retry")
+                continue
+
+
+def allFishingOrderMenu(avalibleProducts, currentIndex):
+    allFishingProducts = []
+    index = currentIndex
+    for product in avalibleProducts:
+        query = """SELECT p.*, h.*, SUM(i.Amount) AS Total_Amount
+                    FROM Product AS p
+                    JOIN Fishing_Equipment AS h on p.UPC_Code = h.UPC_code
+                    JOIN Inventory AS i ON p.UPC_Code = i.UPC_Code
+                    WHERE p.UPC_Code = """ + str(product[4]) + " GROUP BY p.UPC_Code;"
+        cursor.execute(query)
+        fishings = cursor.fetchall()
+        if (len(fishings) != 0):
+            query = """
+        SELECT DISTINCT p.name, SUM(i.Amount), p.UPC_Code, p.Price, p.UPC_Code, p.Brand_Name, p.Weight
+        FROM Inventory i
+        JOIN Product p ON i.UPC_Code = p.UPC_Code
+        JOIN Store st ON i.Store_ID = st.Store_ID
+        WHERE i.Amount > 0 AND  p.UPC_Code =""" + str(fishings[0][0]) + " GROUP BY p.Name, p.UPC_Code, p.Price;"
+            cursor.execute(query)
+            avaliable_products = cursor.fetchall()
+            allFishingProducts.append(avaliable_products[0])
+    if (len(allFishingProducts) == 0):
+        print("No Fishing Products")
+        input("Hit Enter to Contiune")
+        return -1
+    else:
+        for fishing in allFishingProducts:
+            query = "SELECT * FROM Rods WHERE UPC_Code =" + str(fishing[2])+";"
+            cursor.execute(query)
+            if len(cursor.fetchall()) != 0:
+                RodsOrderMenu([fishing], index)
+                index += 1
+                continue
+            query = "SELECT * FROM Reels WHERE UPC_Code =" + \
+                str(fishing[2])+";"
+            cursor.execute(query)
+            if len(cursor.fetchall()) != 0:
+                ReelsOrderMenu([fishing], index)
+                index += 1
+                continue
+            query = "SELECT * FROM Bait_and_Lures WHERE UPC_Code =" + \
+                str(fishing[2])+";"
+            cursor.execute(query)
+            if len(cursor.fetchall()) != 0:
+                BaitAndLuresOrderMenu([fishing], index)
+                index += 1
+                continue
+            print(str(index) + ": " + fishing[0] + "\n\tAmount Avalible: " +
+                  str(int(fishing[1])) + "\n\tPrice: $" + str(fishing[3]) + "\n\tBrand: " + str(fishing[5]) + "\n\tWeight: " + str(fishing[6]))
+            index += 1
+        return allFishingProducts
+
+
+def RodsOrderMenu(avalibleProducts, currentIndex):
+    allRodProducts = []
+    index = currentIndex
+    for product in avalibleProducts:
+        query = """SELECT p.*, h.*, s.*, SUM(i.Amount) AS Total_Amount
+                    FROM Product AS p
+                    JOIN Rods AS s ON p.UPC_Code = s.UPC_Code
+                    JOIN Fishing_Equipment AS h on p.UPC_Code = h.UPC_code
+                    JOIN Inventory AS i ON p.UPC_Code = i.UPC_Code
+                    WHERE p.UPC_Code = """ + str(product[4]) + " GROUP BY p.UPC_Code;"
+        cursor.execute(query)
+        rods = cursor.fetchall()
+        if (len(rods) != 0):
+            print(str(index) + ": " + rods[0][1] + "\n\tAmount Avalible: " + str(int(rods[0][17])) + "\n\tPrice: $" + str(rods[0][2]) + "\n\tBrand: " + rods[0][8] + "\n\tWater Type: " + rods[0][10] +
+                  "\n\tLength: " + str(rods[0][12]) + "\n\tPower: " + str(rods[0][13]) + "\n\tRod Type: " + str(rods[0][14]) + "\n\tMaterial: " + str(rods[0][15]))
+            index += 1
+            query = """
+        SELECT DISTINCT p.name, SUM(i.Amount), p.UPC_Code, p.Price
+        FROM Inventory i
+        JOIN Product p ON i.UPC_Code = p.UPC_Code
+        JOIN Store st ON i.Store_ID = st.Store_ID
+        WHERE i.Amount > 0 AND  p.UPC_Code =""" + str(rods[0][0]) + " GROUP BY p.Name, p.UPC_Code, p.Price;"
+            cursor.execute(query)
+            avaliable_products = cursor.fetchall()
+            allRodProducts.append(avaliable_products[0])
+    if (len(allRodProducts) == 0):
+        print("No Rods Avalible")
+        input("Press Enter to try Again")
+        return -1
+    return allRodProducts
+
+
+def ReelsOrderMenu(avalibleProducts, currentIndex):
+    allReelProducts = []
+    index = currentIndex
+    for product in avalibleProducts:
+        query = """SELECT p.*, h.*, s.*, SUM(i.Amount) AS Total_Amount
+                    FROM Product AS p
+                    JOIN Reels AS s ON p.UPC_Code = s.UPC_Code
+                    JOIN Fishing_Equipment AS h on p.UPC_Code = h.UPC_code
+                    JOIN Inventory AS i ON p.UPC_Code = i.UPC_Code
+                    WHERE p.UPC_Code = """ + str(product[4]) + " GROUP BY p.UPC_Code;"
+        cursor.execute(query)
+        reels = cursor.fetchall()
+        if (len(reels) != 0):
+            print(str(index) + ": " + reels[0][1] + "\n\tAmount Avalible: " + str(int(reels[0][16])) + "\n\tPrice: $" + str(reels[0][2]) + "\n\tBrand: " + reels[0][8] + "\n\tWater Type: " + reels[0][10] +
+                  "\n\tGear Ration: " + str(reels[0][12]) + "\n\tLine Capcity: " + str(reels[0][13]) + "\n\tReel Type: " + str(reels[0][14]))
+            index += 1
+            query = """
+        SELECT DISTINCT p.name, SUM(i.Amount), p.UPC_Code, p.Price
+        FROM Inventory i
+        JOIN Product p ON i.UPC_Code = p.UPC_Code
+        JOIN Store st ON i.Store_ID = st.Store_ID
+        WHERE i.Amount > 0 AND  p.UPC_Code =""" + str(reels[0][0]) + " GROUP BY p.Name, p.UPC_Code, p.Price;"
+            cursor.execute(query)
+            avaliable_products = cursor.fetchall()
+            allReelProducts.append(avaliable_products[0])
+    if (len(allReelProducts) == 0):
+        print("No Reels Avalible")
+        input("Press Enter to try Again")
+        return -1
+    return allReelProducts
+
+
+def BaitAndLuresOrderMenu(avalibleProducts, currentIndex):
+    allBaitProducts = []
+    index = currentIndex
+    for product in avalibleProducts:
+        query = """SELECT p.*, h.*, s.*, SUM(i.Amount) AS Total_Amount
+                    FROM Product AS p
+                    JOIN Bait_and_Lures AS s ON p.UPC_Code = s.UPC_Code
+                    JOIN Fishing_Equipment AS h on p.UPC_Code = h.UPC_code
+                    JOIN Inventory AS i ON p.UPC_Code = i.UPC_Code
+                    WHERE p.UPC_Code = """ + str(product[4]) + " GROUP BY p.UPC_Code;"
+        cursor.execute(query)
+        baits = cursor.fetchall()
+        if (len(baits) != 0):
+            print(str(index) + ": " + baits[0][1] + "\n\tAmount Avalible: " + str(int(baits[0][16])) + "\n\tPrice: $" + str(baits[0][2]) + "\n\tBrand: " + baits[0][8] + "\n\tWater Type: " + baits[0][10] +
+                  "\n\tBait Type: " + str(baits[0][12]) + "\n\tSize: " + str(baits[0][13]) + "\n\tMaterial: " + str(baits[0][14]))
+            index += 1
+            query = """
+        SELECT DISTINCT p.name, SUM(i.Amount), p.UPC_Code, p.Price
+        FROM Inventory i
+        JOIN Product p ON i.UPC_Code = p.UPC_Code
+        JOIN Store st ON i.Store_ID = st.Store_ID
+        WHERE i.Amount > 0 AND  p.UPC_Code =""" + str(baits[0][0]) + " GROUP BY p.Name, p.UPC_Code, p.Price;"
+            cursor.execute(query)
+            avaliable_products = cursor.fetchall()
+            allBaitProducts.append(avaliable_products[0])
+    if (len(allBaitProducts) == 0):
+        print("No Bait or Lures Avalible")
+        input("Press Enter to try Again")
+        return -1
+    return allBaitProducts
+
+
+def CampingEquipmentOrderMenu(avalibleProducts, currentIndex):
+    os.system('clear')
+    runMenu = True
+    while (runMenu):
+        first_selection = input("""Select Camping Product Type:
+        1. Tents\n
+        2. Sleeping Bags\n
+        3. All\n
+        4. Exit
+        """)
+        try:
+            fselection = int(first_selection)
+        except:
+            input("Invalid input\n press enter to retry")
+            try:
+                os.system('clear')
+            except:
+                os.system('clear')
+            continue
+        if (fselection < 1 or fselection > 4):
+            input("Invalid input\n press enter to retry")
+            continue
+        match (fselection):
+            case 1:
+                return TentsOrderMenu(avalibleProducts, currentIndex)
+            case 2:
+                return SleepingBagsOrderMenu(avalibleProducts, currentIndex)
+            case 3:
+                return allCampingOrderMenu(avalibleProducts, currentIndex)
+                print("All Camping")
+            case 4:
+                print("Exiting")
+                runMenu = False
+                os.system('clear')
+                break
+            case _:
+                input("Invalid input\n press enter to retry")
+                continue
+
+
+def allCampingOrderMenu(avalibleProducts, currentIndex):
+    allCampingProducts = []
+    index = currentIndex
+    for product in avalibleProducts:
+        query = """SELECT p.*, h.*, SUM(i.Amount) AS Total_Amount
+                    FROM Product AS p
+                    JOIN Camping_Equipment AS h on p.UPC_Code = h.UPC_code
+                    JOIN Inventory AS i ON p.UPC_Code = i.UPC_Code
+                    WHERE p.UPC_Code = """ + str(product[4]) + " GROUP BY p.UPC_Code;"
+        cursor.execute(query)
+        campings = cursor.fetchall()
+        if (len(campings) != 0):
+            query = """
+        SELECT DISTINCT p.name, SUM(i.Amount), p.UPC_Code, p.Price, p.UPC_Code, p.Brand_Name, p.Weight
+        FROM Inventory i
+        JOIN Product p ON i.UPC_Code = p.UPC_Code
+        JOIN Store st ON i.Store_ID = st.Store_ID
+        WHERE i.Amount > 0 AND  p.UPC_Code =""" + str(campings[0][0]) + " GROUP BY p.Name, p.UPC_Code, p.Price;"
+            cursor.execute(query)
+            avaliable_products = cursor.fetchall()
+            allCampingProducts.append(avaliable_products[0])
+    if (len(allCampingProducts) == 0):
+        print("No Camping Products")
+        input("Hit Enter to Contiune")
+        return -1
+    else:
+        for camping in allCampingProducts:
+            query = "SELECT * FROM Tents WHERE UPC_Code =" + \
+                str(camping[2])+";"
+            cursor.execute(query)
+            if len(cursor.fetchall()) != 0:
+                TentsOrderMenu([camping], index)
+                index += 1
+                continue
+            query = "SELECT * FROM Sleeping_Bags WHERE UPC_Code =" + \
+                str(camping[2])+";"
+            cursor.execute(query)
+            if len(cursor.fetchall()) != 0:
+                SleepingBagsOrderMenu([camping], index)
+                index += 1
+                continue
+            print(str(index) + ": " + camping[0] + "\n\tAmount Avalible: " +
+                  str(int(camping[1])) + "\n\tPrice: $" + str(camping[3]) + "\n\tBrand: " + str(camping[5]) + "\n\tWeight: " + str(camping[6]))
+            index += 1
+        return allCampingProducts
+
+
+def TentsOrderMenu(avalibleProducts, currentIndex):
+    allTentProducts = []
+    index = currentIndex
+    for product in avalibleProducts:
+        query = """SELECT p.*, h.*, s.*, SUM(i.Amount) AS Total_Amount
+                    FROM Product AS p
+                    JOIN Tents AS s ON p.UPC_Code = s.UPC_Code
+                    JOIN Camping_Equipment AS h on p.UPC_Code = h.UPC_code
+                    JOIN Inventory AS i ON p.UPC_Code = i.UPC_Code
+                    WHERE p.UPC_Code = """ + str(product[4]) + " GROUP BY p.UPC_Code;"
+        cursor.execute(query)
+        tents = cursor.fetchall()
+        if (len(tents) != 0):
+            print(str(index) + ": " + tents[0][1] + "\n\tAmount Avalible: " + str(int(tents[0][16])) + "\n\tPrice: $" + str(tents[0][2]) + "\n\tBrand: " + tents[0][8] + "\n\tCold Rating: " + tents[0][10] +
+                  "\n\tCapacity: " + str(tents[0][12]) + "\n\tSetup Time:" + str(tents[0][13]) + "\n\tMaterial: " + str(tents[0][14]))
+            index += 1
+            query = """
+        SELECT DISTINCT p.name, SUM(i.Amount), p.UPC_Code, p.Price
+        FROM Inventory i
+        JOIN Product p ON i.UPC_Code = p.UPC_Code
+        JOIN Store st ON i.Store_ID = st.Store_ID
+        WHERE i.Amount > 0 AND  p.UPC_Code =""" + str(tents[0][0]) + " GROUP BY p.Name, p.UPC_Code, p.Price;"
+            cursor.execute(query)
+            avaliable_products = cursor.fetchall()
+            allTentProducts.append(avaliable_products[0])
+    if (len(allTentProducts) == 0):
+        print("No Tents Avalible")
+        input("Press Enter to try Again")
+        return -1
+    return allTentProducts
+
+
+def SleepingBagsOrderMenu(avalibleProducts, currentIndex):
+    allSleepingBagProducts = []
+    index = currentIndex
+    for product in avalibleProducts:
+        query = """SELECT p.*, h.*, s.*, SUM(i.Amount) AS Total_Amount
+                    FROM Product AS p
+                    JOIN Sleeping_Bags AS s ON p.UPC_Code = s.UPC_Code
+                    JOIN Camping_Equipment AS h on p.UPC_Code = h.UPC_code
+                    JOIN Inventory AS i ON p.UPC_Code = i.UPC_Code
+                    WHERE p.UPC_Code = """ + str(product[4]) + " GROUP BY p.UPC_Code;"
+        cursor.execute(query)
+        bags = cursor.fetchall()
+        if (len(bags) != 0):
+            print(str(index) + ": " + bags[0][1] + "\n\tAmount Avalible: " + str(int(bags[0][16])) + "\n\tPrice: $" + str(bags[0][2]) + "\n\tBrand: " + bags[0][8] + "\n\tCold Rating: " + bags[0][10] +
+                  "\n\tCapacity: " + str(bags[0][12]) + "\n\tInsulation Type:" + str(bags[0][13]) + "\n\tMoisture Wicking: " + str(bags[0][14]))
+            index += 1
+            query = """
+        SELECT DISTINCT p.name, SUM(i.Amount), p.UPC_Code, p.Price
+        FROM Inventory i
+        JOIN Product p ON i.UPC_Code = p.UPC_Code
+        JOIN Store st ON i.Store_ID = st.Store_ID
+        WHERE i.Amount > 0 AND  p.UPC_Code =""" + str(bags[0][0]) + " GROUP BY p.Name, p.UPC_Code, p.Price;"
+            cursor.execute(query)
+            avaliable_products = cursor.fetchall()
+            allSleepingBagProducts.append(avaliable_products[0])
+    if (len(allSleepingBagProducts) == 0):
+        print("No Sleeping Bags Avalible")
+        input("Press Enter to try Again")
+        return -1
+    return allSleepingBagProducts
+
 # web orders
 
 
@@ -410,7 +1442,7 @@ def webOrder():
 
     # get  info for instock products (accross all stores)
     query = """
-        SELECT DISTINCT p.name, SUM(i.Amount), p.UPC_Code, p.Price
+        SELECT DISTINCT p.name, SUM(i.Amount), p.UPC_Code, p.Price, p.UPC_Code
         FROM Inventory i
         JOIN Product p ON i.UPC_Code = p.UPC_Code
         JOIN Store st ON i.Store_ID = st.Store_ID
@@ -430,10 +1462,6 @@ def purchaseProduct(login, avaliable_products):
     validAmount = False
     while ((not validSelection) or (not validAmount)):
         index = 0
-        for product in avaliable_products:
-            print("Product " + str(index) + ": " +
-                  str(product[0]) + " Quantity Avalible: " + str(product[1]), "Price per product: " + str(product[3]))
-            index += 1
         product_selection = input(
             "Enter the number corresponding to the product you want to purchase: \n")
         try:
@@ -534,8 +1562,8 @@ def purchaseProduct(login, avaliable_products):
 
                     else:
                         query = "UPDATE Inventory SET Amount = Amount -" + \
-                                str(intAmount) + " WHERE store_id = " + \
-                                str(store[0]) + " AND UPC_Code = " + \
+                            str(intAmount) + " WHERE store_id = " + \
+                            str(store[0]) + " AND UPC_Code = " + \
                             str(store[4]) + ";"
                         cursor.execute(query)
                         purchases.append(
@@ -556,18 +1584,26 @@ def purchaseProduct(login, avaliable_products):
     return purchases
 
 
-def multiPurchase(login, avalibleProducts):
+def multiPurchase(login, avalibleProductsParam):
     cursor.execute("START TRANSACTION")
     try:
         activePurchase = True
         allPurchases = [[[]]]
         while (activePurchase):
+            avalibleProducts = webOrderMenu(avalibleProductsParam)
+            try:
+                if (avalibleProducts == -1):
+                    continue
+                elif (len(avalibleProducts) == 0):
+                    activePurchase = False
+                    break
+            except:
+                activePurchase = False
+                break
             purchase = purchaseProduct(login, avalibleProducts)
-            for i in range(0, len(avalibleProducts)):
-                # print(avalibleProducts[i][2])
-                # print(purchase[1][1])
-                if (str(avalibleProducts[i][2]) == str(purchase[1][1])):
-                    avalibleProducts.pop(i)
+            for i in range(0, len(avalibleProductsParam)):
+                if (str(avalibleProductsParam[i][2]) == str(purchase[1][1])):
+                    avalibleProductsParam.pop(i)
                     break
             allPurchases.append(purchase)
             choice = input(
@@ -628,23 +1664,26 @@ def printSales():
 
 
 def printPurchases(allPurchases):
-    allAllPurchases = sorted(
-        allPurchases, key=lambda x: x[1])  # sort purchases
-    print("Purchase Summary: ")
-    # ID, UPC, Amount, Price, Product_name
-    totalProduct = 0
-    currentProductUPC = int(allAllPurchases[0][1])
-    for i in range(0, len(allAllPurchases)):
-        if (int(allAllPurchases[i][1]) == currentProductUPC):
-            totalProduct += int(allAllPurchases[i][2])
-        else:
-            print("Product: " + str(allAllPurchases[i-1][4]) + " Quantity: " +
-                  str(totalProduct) + " Total Cost: " + str(totalProduct*int(allAllPurchases[i-1][3])))
-            totalProduct = 0
-            currentProductUPC = int(allAllPurchases[i][1])
-            totalProduct += int(allAllPurchases[i][2])
-    print("Product: " + str(allAllPurchases[len(allAllPurchases)-1][4]) + " Quantity: " +
-          str(totalProduct) + " Total Cost: " + str(totalProduct*int(allAllPurchases[len(allAllPurchases)-1][3])))
+    if (len(allPurchases) == 0):
+        print("No Purchases")
+    else:
+        allAllPurchases = sorted(
+            allPurchases, key=lambda x: x[1])  # sort purchases
+        print("Purchase Summary: ")
+        # ID, UPC, Amount, Price, Product_name
+        totalProduct = 0
+        currentProductUPC = int(allAllPurchases[0][1])
+        for i in range(0, len(allAllPurchases)):
+            if (int(allAllPurchases[i][1]) == currentProductUPC):
+                totalProduct += int(allAllPurchases[i][2])
+            else:
+                print("Product: " + str(allAllPurchases[i-1][4]) + " Quantity: " +
+                      str(totalProduct) + " Total Cost: " + str(totalProduct*int(allAllPurchases[i-1][3])))
+                totalProduct = 0
+                currentProductUPC = int(allAllPurchases[i][1])
+                totalProduct += int(allAllPurchases[i][2])
+        print("Product: " + str(allAllPurchases[len(allAllPurchases)-1][4]) + " Quantity: " +
+              str(totalProduct) + " Total Cost: " + str(totalProduct*int(allAllPurchases[len(allAllPurchases)-1][3])))
 
 
 def addSale(customer, store):  # Helper to add a sale to the database
