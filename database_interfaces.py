@@ -388,7 +388,8 @@ def runMainMenu():
         3. Warehouse\n
         4. Vendor\n
         5. Market-Researcher\n
-        6. Exit
+        6. Store Register\n
+        7. Exit
         """)
         try:
             fselection = int(first_selection)
@@ -399,7 +400,7 @@ def runMainMenu():
             except:
                 os.system('clear')
             continue
-        if (fselection < 1 or fselection > 6):
+        if (fselection < 1 or fselection > 7):
             input("Invalid input\n press enter to retry")
             continue
         match (fselection):
@@ -414,6 +415,8 @@ def runMainMenu():
             case 5:
                 MarketMenu()
             case 6:
+                checkout()
+            case 7:
                 print("Exiting")
                 runMenu = False
                 os.system('clear')
@@ -1611,19 +1614,25 @@ def SleepingBagsOrderMenu(avalibleProducts, currentIndex):
 
 def webOrder():
     os.system('clear')
-
-    login = input("input ur id to login or -1 to register: \n")
-    # check if customer exists in database
-    query = "SELECT * FROM Customer WHERE Customer_ID = " + login
-    try:
-        cursor.execute(query)
-    except mysql.connector.Error as error:
-        input(error + "\npress enter to continue\n")
-
-    if not cursor.fetchone():
-        # no id
-        login = register()
-
+    validLogin = False
+    while (not validLogin):
+        login = input("input ur id to login or -1 to register: \n")
+        if (login == str(-1)):
+            login = register()
+            validLogin = True
+            break
+        # check if customer exists in database
+        query = "SELECT * FROM Customer WHERE Customer_ID = " + login
+        try:
+            cursor.execute(query)
+        except mysql.connector.Error as error:
+            input(error + "\npress enter to continue\n")
+        if not cursor.fetchone():
+            # no id
+            input("Not a Valid ID, press enter to try again")
+            continue
+        validLogin = True
+        break
     # get  info for instock products (accross all stores)
     query = """
         SELECT DISTINCT p.name, SUM(i.Amount), p.UPC_Code, p.Price, p.UPC_Code
@@ -1814,7 +1823,7 @@ def multiPurchase(login, avalibleProductsParam):
             else:
                 # NewSale
                 currentStoreId = purchase[0]
-                currentSaleID = addSale(login, purchase[0])
+                currentSaleID = addSale(login, purchase[0], "Online")
                 if (currentSaleID != -1):
                     addSaleItem(purchase[1], purchase[2],
                                 currentSaleID, purchase[3])
@@ -1870,14 +1879,15 @@ def printPurchases(allPurchases):
               str(totalProduct) + " Total Cost: " + str(totalProduct*int(allAllPurchases[len(allAllPurchases)-1][3])))
 
 
-def addSale(customer, store):  # Helper to add a sale to the database
+def addSale(customer, store, status):  # Helper to add a sale to the database
     cursor.execute("START TRANSACTION")
     try:
         query = "SELECT IFNULL(MAX(Sale_ID), 0) + 1 FROM Sale;"
         cursor.execute(query)
         sale_id = int(cursor.fetchone()[0])
-        query = "INSERT INTO Sale (Sale_ID, Store_ID, Customer_ID, Date) VALUES (" +\
-            str(sale_id)+"," + str(store) + "," + str(customer) + ", NOW()); "
+        query = "INSERT INTO Sale (Sale_ID, Store_ID, Customer_ID, Date, Sale_Type) VALUES (" +\
+            str(sale_id)+"," + str(store) + "," + \
+            str(customer) + ", NOW(), \'" + status + "\'); "
         cursor.execute(query)
         return sale_id
     except mysql.connector.Error as error:
@@ -2684,21 +2694,22 @@ def purchaseHistory():
 	si.UPC_Code,
 	p.name,
     si.Local_Price,
-	si.Quanity
+	si.Quanity,
+    s.Sale_Type
     FROM
 	Customer c, Sale s, Sale_Item si, Product p
     WHERE
 	c.customer_id = s.customer_id AND
 	s.sale_id = si.sale_id AND
 	si.UPC_Code = p.UPC_Code AND
-	c.customer_id = """ + login + " ORDER BY s.date DESC, si.UPC_Code "
+	c.customer_id = """ + login + " ORDER BY s.sale_id ASC, si.UPC_Code "
     cursor.execute(query)
     purchases = cursor.fetchall()
     print(purchases[0][1] + " " + purchases[0][2] + "'s Purchase History: ")
     for purchase in purchases:
         formatted_date = purchase[3].strftime("%B %d, %Y")
         print(formatted_date + " Product: " + purchase[5] + " Quantity: " + str(
-            purchase[7]) + " Cost Per Item: $" + str(purchase[6]) + " Total Cost: $" + str(purchase[6]*purchase[7]))
+            purchase[7]) + " Cost Per Item: $" + str(purchase[6]) + " Total Cost: $" + str(purchase[6]*purchase[7]), " Sale Type: " + purchase[8])
 
 
 def salesHistory():
@@ -2730,12 +2741,13 @@ def salesHistory():
     si.UPC_Code,
     p.Name AS Product_Name,
     si.Quanity,
-    si.Local_Price
+    si.Local_Price,
+    s.Sale_Type
 FROM Sale AS s
 JOIN Sale_Item AS si ON s.Sale_ID = si.Sale_ID
 JOIN Product AS p ON si.UPC_Code = p.UPC_Code
 JOIN Customer AS c ON s.Customer_ID = c.Customer_ID
-WHERE s.Store_ID = """ + store_id + " ORDER BY s.Date DESC;"
+WHERE s.Store_ID = """ + store_id + " ORDER BY s.Sale_ID ASC;"
 
     cursor.execute(query)
     sales = cursor.fetchall()
@@ -2743,15 +2755,102 @@ WHERE s.Store_ID = """ + store_id + " ORDER BY s.Date DESC;"
     for sale in sales:
         formatted_date = sale[2].strftime("%B %d, %Y")
         print(formatted_date + ": Product: (" + str(sale[6]) + ") " + sale[7] + " Quantity: " + str(
-            sale[8]) + " Cost Per Item: $" + str(sale[9]) + " Total Cost: $" + str(sale[8]*sale[9]) + " Buyer: " + sale[4] + " " + sale[5])
-
+            sale[8]) + " Cost Per Item: $" + str(sale[9]) + " Total Cost: $" + str(sale[8]*sale[9]) + " Buyer: " + sale[4] + " " + sale[5] + " Sale Type: " + sale[10])
+    input("Press enter to contiune")
 
 # checkout - update inventory and customer frequent buys
 
 
 def checkout():
+    activeRegister = True
     # input: customer info ,  product id and quantity , store id
-    input()
+    # store login
+    os.system('clear')
+    store_id = input("Input Store ID: ")
+    query = "SELECT * FROM Store WHERE Store_ID =" + store_id + ";"
+    try:
+        cursor.execute(query)
+    except mysql.connector.Error as error:
+        input(error + "\npress enter to continue\n")
+
+    while not cursor.fetchone():
+        os.system('clear')
+        store_id = input("Input Valid Store ID: ")
+        query = "SELECT * FROM Store WHERE Store_ID =" + store_id + ";"
+        try:
+            cursor.execute(query)
+        except mysql.connector.Error as error:
+            input(error + "\npress enter to continue\n")
+    while (activeRegister):
+        saleOngoing = True
+        allSales = []
+        while (saleOngoing):
+            item = input("Scan Item: (-1 to Finish, -10 to close register)")
+            if (item == str(-1)):
+                saleOngoing = False
+                break
+            elif (item == str(-10)):
+                saleOngoing = False
+                activeRegister = False
+                return
+            query = "SELECT * FROM Product WHERE UPC_Code = " + str(item)
+            cursor.execute(query)
+            if (len(cursor.fetchall()) == 0):  # Invalid Product Scanned
+                print("Invalid UPC Code")
+            else:
+                allSales.append(item)
+        if (len(allSales) == 0):
+            continue
+        # Get customer info:
+        info = input("Does customer want to provide info? Yes/No\n")
+        id = -999
+        if (info.lower() != "no"):
+            # Check if they exist
+            id = input("input ur id to login or -1 to register: \n")
+            # check if customer exists in database
+            query = "SELECT * FROM Customer WHERE Customer_ID = " + id
+            try:
+                cursor.execute(query)
+            except mysql.connector.Error as error:
+                input(error + "\npress enter to continue\n")
+            if not cursor.fetchone():
+                # no id
+                input("Not a Valid ID, press enter to register")
+                id = register()
+        # Handle Sales
+        sale_id = addSale(id, store_id, "In_person")
+        allSales.sort()
+        quantity = 0
+        currentUPC = allSales[0]
+        cursor.execute("START TRANSACTION")
+        totalCost = 0
+        try:
+            for sale in allSales:
+                if (currentUPC == sale):
+                    quantity += 1
+                else:
+                    query = "SELECT Local_Price FROM Inventory WHERE UPC_Code = " + \
+                        str(sale) + " AND Store_ID = " + str(store_id) + ";"
+                    cursor.execute(query)
+                    price = cursor.fetchall()[0][0]
+                    addSaleItem(currentUPC, quantity, sale_id, price)
+                    quantity = 1
+                    currentUPC = sale
+                query = "UPDATE Inventory SET Amount = Amount - 1 WHERE Store_ID = " + \
+                    store_id + " AND UPC_Code = " + str(sale) + ";"
+                cursor.execute(query)
+            query = "SELECT Local_Price FROM Inventory WHERE UPC_Code = " + \
+                    str(sale) + " AND Store_ID = " + str(store_id) + ";"
+            cursor.execute(query)
+            price = cursor.fetchall()[0][0]
+            totalCost += (int(price)*int(quantity))
+            addSaleItem(currentUPC, quantity, sale_id, price)
+        except mysql.connector.Error as error:
+            print("Error caught on query, rolling back database, please redo transaction")
+            print("Error: ", error)
+            cnx.rollback()  # Roll back
+        print("Completed Purchase total cost: " + str(totalCost))
+        cnx.commit()
 
 
 def main():
