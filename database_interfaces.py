@@ -2111,6 +2111,21 @@ def register():
 
 def restock():
     os.system('clear')
+    store_id = input("Input Store ID: ")
+    query = "SELECT * FROM Store WHERE Store_ID =" + store_id + ";"
+    try:
+        cursor.execute(query)
+    except mysql.connector.Error as error:
+        input(error + "\npress enter to continue\n")
+
+    while not cursor.fetchone():
+        os.system('clear')
+        store_id = input("Input Valid Store ID: ")
+        query = "SELECT * FROM Store WHERE Store_ID =" + store_id + ";"
+        try:
+            cursor.execute(query)
+        except mysql.connector.Error as error:
+            input(error + "\npress enter to continue\n")
     RESTOCK_AMOUNT = 20
     # Final all stores and products that need to be restocked
     # Query to find which products are low
@@ -2122,7 +2137,8 @@ def restock():
                 FROM Inventory AS i
                 JOIN Store AS s ON i.Store_ID = s.Store_ID
                 WHERE i.Amount <= 5
-                AND i.UPC_Code NOT IN (
+                AND s.Store_ID = """ + store_id + """
+                 AND i.UPC_Code NOT IN (
                     SELECT ri.UPC_Code
                     FROM Restock_Item AS ri
                     JOIN Restock AS r ON ri.Stocking_ID = r.Stocking_ID
@@ -2358,73 +2374,75 @@ def printRestocks():
 # reorder between warehouse and vendor
 # create reorder req.
 def reorder():
+    os.system('clear')
+    warehouse_id = input("Input Warehouse ID: ")
+    query = "SELECT * FROM Warehouse WHERE Warehouse_ID =" + warehouse_id + ";"
+    try:
+        cursor.execute(query)
+    except mysql.connector.Error as error:
+        input(error + "\npress enter to continue\n")
+
+    while not cursor.fetchone():
+        os.system('clear')
+        warehouse_id = input("Input Valid Warehouse ID: ")
+        query = "SELECT * FROM Warehouse WHERE Warehouse_ID =" + warehouse_id + ";"
+        try:
+            cursor.execute(query)
+        except mysql.connector.Error as error:
+            input(error + "\npress enter to continue\n")
     REORDER_AMOUNT = 50
     os.system('clear')
-    query = "SELECT DISTINCT Warehouse_ID FROM Warehouse"  # get all warehouse ids
+
+    query = """  SELECT wi.UPC_Code, sb.Vendor_ID, wi.Amount, wi.Warehouse_ID
+            FROM Warehouse_Inventory AS wi
+            JOIN Supplied_By AS sb ON wi.UPC_Code = sb.UPC_Code
+            JOIN Warehouse AS w ON wi.Warehouse_ID = w.Warehouse_ID
+            WHERE wi.Warehouse_ID =""" + str(warehouse_id) + """ AND wi.Amount < 100
+            AND wi.UPC_Code NOT IN (
+                SELECT ri.UPC_Code
+                FROM Reorder_Item AS ri
+                JOIN Reorder AS r ON ri.Reorder_ID = r.Reorder_ID
+                WHERE r.Reorder_Status = 'ORDERED'
+                AND r.Warehouse_ID =""" + str(warehouse_id) + """
+                UNION
+                SELECT si.UPC_Code
+                FROM Shipment_Item AS si
+                JOIN Shipment AS sh ON si.Shipment_ID = sh.Shipment_ID
+                WHERE sh.Shipment_Status = 1
+                AND sh.Warehouse_ID =""" + str(warehouse_id)+");"
     cursor.execute(query)
-    warehouses = cursor.fetchall()
-
-    for warehouse in warehouses:  # find the products that need reordering for each warehouse
-
-        # input: store id (run to check for low stock and put in a reorder to nescessary vendor(s))
-        # query = """
-        #         SELECT wi.UPC_Code, sb.Vendor_ID, wi.Amount
-        #         FROM Warehouse_Inventory AS wi
-        #         JOIN Supplied_By AS sb ON wi.UPC_Code = sb.UPC_Code
-        #         JOIN Warehouse AS w ON wi.Warehouse_ID = w.Warehouse_ID
-        #         WHERE wi.Warehouse_ID =""" + str(warehouse[0]) + " AND wi.Amount < 100;"
-
-        query = """  SELECT wi.UPC_Code, sb.Vendor_ID, wi.Amount, wi.Warehouse_ID
-                FROM Warehouse_Inventory AS wi
-                JOIN Supplied_By AS sb ON wi.UPC_Code = sb.UPC_Code
-                JOIN Warehouse AS w ON wi.Warehouse_ID = w.Warehouse_ID
-                WHERE wi.Warehouse_ID =""" + str(warehouse[0]) + """ AND wi.Amount < 100
-                AND wi.UPC_Code NOT IN (
-                    SELECT ri.UPC_Code
-                    FROM Reorder_Item AS ri
-                    JOIN Reorder AS r ON ri.Reorder_ID = r.Reorder_ID
-                    WHERE r.Reorder_Status = 'ORDERED'
-                    AND r.Warehouse_ID =""" + str(warehouse[0]) + """
-                    UNION
-                    SELECT si.UPC_Code
-                    FROM Shipment_Item AS si
-                    JOIN Shipment AS sh ON si.Shipment_ID = sh.Shipment_ID
-                    WHERE sh.Shipment_Status = 1
-                    AND sh.Warehouse_ID =""" + str(warehouse[0])+");"
-        cursor.execute(query)
-        reorderProducts = cursor.fetchall()
-        reorderProducts = sorted(
-            reorderProducts, key=lambda x: x[1])  # sort products by vendor
-        if len(reorderProducts) == 0:
-            print("Warehouse " + str(warehouse[0]) + " is fully stocked.")
-        else:
-            print("Items needing Reordering: ")
-            for product in reorderProducts:
-                print("Warehouse ID: " + str(warehouse[0]) + " product UPC: " +
-                      str(product[0]) + " quantity: " + str(product[2]) + " Vendor ID: " + str(product[1]))
-            input("Press Enter to reorder")
-
-        currVendor = -1
-        reorder_id = -2
+    reorderProducts = cursor.fetchall()
+    reorderProducts = sorted(
+        reorderProducts, key=lambda x: x[1])  # sort products by vendor
+    if len(reorderProducts) == 0:
+        print("Warehouse " + str(warehouse_id) + " is fully stocked.")
+    else:
+        print("Items needing Reordering: ")
         for product in reorderProducts:
-            query = "SELECT wi.Max_Capacity FROM Warehouse_Inventory as wi WHERE wi.Warehouse_ID = " + \
-                str(product[3])
-            cursor.execute(query)
-            # Set Restock Amount to fill to max
-            REORDER_AMOUNT = cursor.fetchall()[0][0]-product[2]
-            print(REORDER_AMOUNT)
-            vendorId = product[1]
+            print("Warehouse ID: " + str(warehouse_id) + " product UPC: " +
+                  str(product[0]) + " quantity: " + str(product[2]) + " Vendor ID: " + str(product[1]))
+        input("Press Enter to reorder")
 
-            if vendorId != currVendor:
-                # create new reorder, add curr product
-                reorder_id = addReorder(warehouse[0], vendorId)
-                currVendor = vendorId
-                addReorderItem(product[0], REORDER_AMOUNT, reorder_id)
-                cnx.commit()
-            else:
-                # add to curr reorder
-                addReorderItem(product[0], REORDER_AMOUNT, reorder_id)
-                cnx.commit()
+    currVendor = -1
+    reorder_id = -2
+    for product in reorderProducts:
+        query = "SELECT wi.Max_Capacity FROM Warehouse_Inventory as wi WHERE wi.Warehouse_ID = " + \
+            str(product[3])
+        cursor.execute(query)
+        # Set Restock Amount to fill to max
+        REORDER_AMOUNT = cursor.fetchall()[0][0]-product[2]
+        vendorId = product[1]
+
+        if vendorId != currVendor:
+            # create new reorder, add curr product
+            reorder_id = addReorder(warehouse_id, vendorId)
+            currVendor = vendorId
+            addReorderItem(product[0], REORDER_AMOUNT, reorder_id)
+            cnx.commit()
+        else:
+            # add to curr reorder
+            addReorderItem(product[0], REORDER_AMOUNT, reorder_id)
+            cnx.commit()
 
 
 def order():
