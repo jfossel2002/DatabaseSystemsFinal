@@ -435,7 +435,11 @@ def OLAP():
             2. Total Product by Vendor\n
             3. Average Inventory Levels\n
             4. Top Customers\n
-            5. Best Sellers\n
+            5. Best Sellers by Store\n
+            6. Best Sellers by Region\n
+            7. Top 3 Stores by Sales\n
+            8. How many stores Pistols outsell Rifles\n
+            9. Top Product people buy in addition to tents\n
             """)
     try:
         selection = int(rselection)
@@ -443,7 +447,7 @@ def OLAP():
         input("Invalid input\n press enter to retry")
         OLAP()
 
-    if (selection < 1 or selection > 5):
+    if (selection < 1 or selection > 9):
         input("Invalid input\n press enter to retry")
         OLAP()
     os.system('clear')
@@ -573,6 +577,131 @@ def OLAP():
             except mysql.connector.Error as error:
                 print(error)
                 input("\npress enter to continue\n")
+        case 6:
+            # best sellers by region
+            query = """ WITH Sales AS (
+    SELECT s.Region, p.Name, p.UPC_Code, SUM(si.Quanity) as Total_Sales,
+        ROW_NUMBER() OVER (PARTITION BY s.Region ORDER BY SUM(si.Quanity) DESC) as Sales_Rank
+    FROM Store s
+    JOIN Sale sa ON s.Store_ID = sa.Store_ID
+    JOIN Sale_Item si ON sa.Sale_ID = si.Sale_ID
+    JOIN Product p ON si.UPC_Code = p.UPC_Code
+    GROUP BY s.Region, p.Name, p.UPC_Code
+)
+SELECT * FROM Sales WHERE Sales_Rank <= 5;
+"""
+            try:
+                cursor.execute(query)
+                results = cursor.fetchall()
+                print("Best Sellers by Region:")
+                store = ""
+                for row in results:
+                    if str(row[0]) != store:
+                        store = str(row[0])
+                        space = "\n Region " + store + ": \n"
+                    else:
+                        space = ""
+
+                    print(space + str(row[4]) + ". " + row[1] + " (ID: " + str(
+                        row[2]) + ") " + "Quantity Sold: " + str(row[3]).strip('Decimal'))
+            except mysql.connector.Error as error:
+                print(error)
+                input("\npress enter to continue\n")
+        case 7:
+            query = """
+            WITH StoreSales AS (
+    SELECT s.Store_ID, SUM(si.Local_Price * si.Quanity) AS Total_Sales
+    FROM Store s
+    JOIN Sale sa ON s.Store_ID = sa.Store_ID
+    JOIN Sale_Item si ON sa.Sale_ID = si.Sale_ID
+    GROUP BY s.Store_ID
+),
+RankedStoreSales AS (
+    SELECT Store_ID, Total_Sales,
+        ROW_NUMBER() OVER (ORDER BY Total_Sales DESC) AS Sales_Rank
+    FROM StoreSales
+)
+SELECT Store_ID, Total_Sales
+FROM RankedStoreSales
+WHERE Sales_Rank <= 3;
+"""
+            try:
+                cursor.execute(query)
+                results = cursor.fetchall()
+                print("Top 3 Stores by Sales")
+                for result in results:
+                    print("Store: " + str(result[0]) +
+                          " Sales: $" + str(int(result[1])))
+            except mysql.connector.Error as error:
+                print(error)
+                input("\npress enter to continue\n")
+        case 8:
+            query = """
+WITH PistolSales AS (
+    SELECT s.Store_ID, SUM(si.Quanity) AS Total_Pistol_Sales
+    FROM Store s
+    JOIN Sale sa ON s.Store_ID = sa.Store_ID
+    JOIN Sale_Item si ON sa.Sale_ID = si.Sale_ID
+    JOIN Product p ON si.UPC_Code = p.UPC_Code
+    WHERE EXISTS (SELECT 1 FROM Pistol pt WHERE pt.UPC_Code = p.UPC_Code)
+    GROUP BY s.Store_ID
+),
+RifleSales AS (
+    SELECT s.Store_ID, SUM(si.Quanity) AS Total_Rifle_Sales
+    FROM Store s
+    JOIN Sale sa ON s.Store_ID = sa.Store_ID
+    JOIN Sale_Item si ON sa.Sale_ID = si.Sale_ID
+    JOIN Product p ON si.UPC_Code = p.UPC_Code
+    WHERE EXISTS (SELECT 1 FROM Rifle rf WHERE rf.UPC_Code = p.UPC_Code)
+    GROUP BY s.Store_ID
+),
+StoreSalesComparison AS (
+    SELECT p.Store_ID, p.Total_Pistol_Sales, r.Total_Rifle_Sales
+    FROM PistolSales p
+    JOIN RifleSales r ON p.Store_ID = r.Store_ID
+    WHERE p.Total_Pistol_Sales > r.Total_Rifle_Sales
+)
+SELECT Store_ID, Total_Pistol_Sales, Total_Rifle_Sales
+FROM StoreSalesComparison;
+            """
+            try:
+                cursor.execute(query)
+                results = cursor.fetchall()
+                print("Pistols outsell Rifles in: " +
+                      str(len(results)) + " stores")
+                for result in results:
+                    print("Store: " + str(result[0]) + " Pistol Sales: " + str(
+                        int(result[1])) + " Rifles Sales: " + str(int(result[2])))
+            except mysql.connector.Error as error:
+                print(error)
+                input("\npress enter to continue\n")
+        case 9:
+            query = """
+            WITH TentSales AS (
+    SELECT sa.Sale_ID
+    FROM Sale sa
+    JOIN Sale_Item si ON sa.Sale_ID = si.Sale_ID
+    JOIN Product p ON si.UPC_Code = p.UPC_Code
+    WHERE p.Name = 'Tent'
+),
+CoSales AS (
+    SELECT si2.UPC_Code, p2.Name, COUNT(*) AS Total_Sales
+    FROM TentSales ts
+    JOIN Sale_Item si2 ON ts.Sale_ID = si2.Sale_ID
+    JOIN Product p2 ON si2.UPC_Code = p2.UPC_Code
+    WHERE p2.Name <> 'Tent'
+    GROUP BY si2.UPC_Code, p2.Name
+)
+SELECT UPC_Code, Name, Total_Sales
+FROM CoSales
+ORDER BY Total_Sales DESC
+LIMIT 1;
+            """
+            cursor.execute(query)
+            results = cursor.fetchall()
+            print("Top item in addition of tents")
+            for result in results:
+                print("("+str(result[0])+") " + result[1])
 
     rselection = input("")
     os.system('clear')
